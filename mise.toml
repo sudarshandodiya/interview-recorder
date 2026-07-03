@@ -1,0 +1,75 @@
+[tools]
+node = "22"
+pnpm = "9"
+
+[env]
+# Ensure mise-managed node is used
+PATH = "{{ config_root }}/node_modules/.bin:{{ env.PATH }}"
+
+[tasks.install]
+description = "Install all dependencies"
+run = "pnpm install"
+
+[tasks.dev]
+description = "Start all services (db, backend, mobile)"
+depends = ["db:up"]
+run = "pnpm dev"
+
+[tasks."dev:backend"]
+description = "Start the backend dev server"
+run = "pnpm --filter @interview-recorder/backend dev"
+
+[tasks."dev:mobile"]
+description = "Start the Expo mobile app"
+run = "pnpm --filter @interview-recorder/mobile start"
+
+[tasks.build]
+description = "Build all packages"
+run = "pnpm build"
+
+[tasks."build:backend"]
+description = "Build the backend"
+run = "pnpm --filter @interview-recorder/backend build"
+
+[tasks.test]
+description = "Run all tests"
+run = "pnpm test"
+
+[tasks."test:backend"]
+description = "Run backend tests"
+run = "pnpm --filter @interview-recorder/backend test"
+
+[tasks.lint]
+description = "Lint all packages"
+run = "pnpm lint"
+
+[tasks."lint:backend"]
+description = "Lint the backend"
+run = "pnpm --filter @interview-recorder/backend lint"
+
+[tasks.check]
+description = "Run all checks (lint + test)"
+depends = ["lint", "test"]
+
+[tasks."db:up"]
+description = "Start PostgreSQL and LocalStack"
+run = "docker compose up -d"
+
+[tasks."db:down"]
+description = "Stop PostgreSQL and LocalStack"
+run = "docker compose down"
+
+[tasks."db:migrate"]
+description = "Run database migrations"
+run = "pnpm --filter @interview-recorder/backend db:migrate"
+
+[tasks."db:studio"]
+description = "Open Drizzle Studio (DB browser)"
+run = "pnpm --filter @interview-recorder/backend db:studio"
+
+[tasks.clean]
+description = "Remove build artifacts and node_modules"
+run = [
+  "pnpm -r exec rm -rf dist build .turbo .expo",
+  "rm -rf node_modules",
+]

@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Interview Recorder",
+    "slug": "interview-recorder",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "interview-recorder",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.interview.recorder",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app requires microphone access to record interviews."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.interview.recorder",
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Interview Recorder to access your microphone."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
