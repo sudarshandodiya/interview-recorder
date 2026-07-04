@@ -201,11 +201,33 @@ The following resolve the PRD §11 open questions for the MVP deliverable:
 - **File integrity / resumable uploads:** Confirmed out of MVP (future
   scope). Large/long interviews are the main residual risk.
 
+## Reliability Tests
+
+The two non-negotiable pillars (PRD §4) are covered by unit tests for the
+backend state transitions (`apps/backend/tests/recordings.test.ts`, 24 tests:
+per-user scoping, `local → uploading → synced/failed`, `/retry`-only-on-
+`failed`, transient-vs-non-transient classification, ownership isolation) and
+by the four manual end-to-end scenarios below. Maestro/Detox E2E is future
+scope; the mobile sync engine's state machine mirrors the backend's and is
+exercised through these flows.
+
+| # | Scenario | Steps | Expected |
+|---|----------|-------|----------|
+| 1 | **Crash mid-record** (capture durability) | 1. `mise run dev:mobile`, start a new recording. 2. From the OS, force-quit the Expo app while recording. 3. Reopen the app. | The interrupted session appears in `My Recordings` with status `Local` and recoverable partial audio (plays back in detail). |
+| 2 | **Kill mid-upload** (sync integrity) | 1. Record + save a session; ensure backend is running and network up. 2. While status shows `Uploading…`, force-quit the Expo app. 3. Reopen the app. | Status resets to `Local` on relaunch (no stuck `Uploading`), the sync engine requeues, and the recording reaches `Synced`. |
+| 3 | **Offline → online** (backoff retries) | 1. Stop the backend (`mise run db:down` or kill the API process). 2. Record + save a session; observe it stays `Local` and retries with backoff (1s→2s→4s→8s→16s). 3. Restart the backend. | The recording auto-syncs to `Synced` within ~30 s of backend availability. |
+| 4 | **Non-transient → terminal `failed` → manual retry** | 1. Mock a non-transient failure (e.g., revoke auth by changing `EXPO_PUBLIC_USER_ID` to an unknown UUID). 2. Record + save; observe it transitions to `failed` after 5 attempts. 3. Restore the valid user id and tap `Retry` in `My Recordings`. | Status is terminal `failed`; manual `Retry` re-sends the audio and reaches `Synced`. |
+
+Run `mise run test:backend` to execute the 24 unit tests backing the state
+machine and per-user scoping.
+
 ## Known Limitations
 
 - **Authentication**: Placeholder only — no real auth is implemented.
-- **Background uploads**: Uploads are fire-and-forget within the server
-  process. A production system would use a job queue (BullMQ, etc.).
+- **Background uploads**: The mobile sync engine runs while the app is
+  foregrounded. True background-task uploads (iOS background tasks / Android
+  foreground services) and a server-side job queue (BullMQ + Redis) are
+  future scope.
 - **Mobile local storage**: Recordings live on device in a durable JSON
   manifest at `documentDirectory/recordings-manifest.json` and individual
   `.m4a` audio files under `documentDirectory/recordings/`. The manifest is
@@ -214,6 +236,11 @@ The following resolve the PRD §11 open questions for the MVP deliverable:
   short-lived pre-signed S3 URL via `@aws-sdk/s3-request-presigner`. Works
   against both LocalStack (dev) and real S3. (Earlier drafts returned a
   placeholder URL; that limitation is resolved.)
+
+- **Authentication**: Per-interviewer stub via `x-user-id` request header
+  resolved against seeded dev users. The per-user scoping seam is real, but
+  the deliverable does not implement a real auth provider (magic link / OIDC).
+  This is a **Known Limitation**, not the product spec — see Decisions above.
 
 ## Potential Improvements
 
