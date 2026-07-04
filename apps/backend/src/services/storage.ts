@@ -2,7 +2,9 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  CreateBucketCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getEnv } from "../config/env.js";
 
 const env = getEnv();
@@ -21,7 +23,7 @@ export const s3Client = new S3Client({
     : {}),
 });
 
-/** Upload a buffer to S3 and return the object key */
+/** Upload a buffer to S3. */
 export async function uploadToS3(
   key: string,
   body: Buffer,
@@ -37,21 +39,40 @@ export async function uploadToS3(
   );
 }
 
-/** Generate a pre-signed download URL (placeholder — real impl later) */
-export async function getDownloadUrl(key: string): Promise<string> {
-  // In a real implementation this would use getSignedUrl from @aws-sdk/s3-request-presigner
-  // For now, return a placeholder using the same bucket/key
-  return `${env.S3_ENDPOINT ?? "https://s3.amazonaws.com"}/${env.S3_BUCKET_NAME}/${key}`;
+/**
+ * Generate a short-lived pre-signed download URL for an S3 object.
+ * Works against both LocalStack (S3_ENDPOINT set) and real S3.
+ */
+export async function getDownloadUrl(
+  key: string,
+  expiresInSeconds = 900
+): Promise<string> {
+  return getSignedUrl(
+    s3Client,
+    new GetObjectCommand({ Bucket: env.S3_BUCKET_NAME, Key: key }),
+    { expiresIn: expiresInSeconds }
+  );
 }
 
-/** Ensure the S3 bucket exists (useful for LocalStack) */
+/** Delete an object from S3 (best-effort; missing objects are tolerated). */
+export async function deleteFromS3(key: string): Promise<void> {
+  const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+  try {
+    await s3Client.send(
+      new DeleteObjectCommand({ Bucket: env.S3_BUCKET_NAME, Key: key })
+    );
+  } catch {
+    // Object may already be absent — tolerate so DELETE is idempotent.
+  }
+}
+
+/** Ensure the S3 bucket exists (useful for LocalStack). */
 export async function ensureBucket(): Promise<void> {
-  const { CreateBucketCommand } = await import("@aws-sdk/client-s3");
   try {
     await s3Client.send(
       new CreateBucketCommand({ Bucket: env.S3_BUCKET_NAME })
     );
   } catch {
-    // Bucket may already exist — that's fine for LocalStack
+    // Bucket may already exist — that's fine for LocalStack.
   }
 }

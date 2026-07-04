@@ -1,138 +1,191 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../db/index.js";
 import { recordings } from "../db/schema.js";
-import { eq, desc } from "drizzle-orm";
-import { uploadToS3, ensureBucket } from "../services/storage.js";
-import { syncRecordingToS3 } from "../services/sync.js";
-import { randomUUID } from "node:crypto";
+import { eq, and, desc } from "drizzle-orm";
+import {
+  ensureBucket,
+  getDownloadUrl,
+  deleteFromS3,
+} from "../services/storage.js";
+import { uploadAudioRecording } from "../services/sync.js";
+import { authHook } from "../services/auth.js";
+
+// ---------------------------------------------------------------------------
+// Recording routes — per-user scoped (PRD §6 "Per-user privacy", §7 auth seam).
+// Two-step client-driven upload contract (see README sync-flow ADR):
+//   1. POST /api/recordings            metadata-only create, status `local`
+//   2. POST /api/recordings/:id/audio  multipart upload -> `synced`/`failed`
+//   3. POST /api/recordings/:id/retry  re-upload audio for `failed` only
+// ---------------------------------------------------------------------------
+
+const NOT_FOUND = {
+  error: "Not Found",
+  message: "Recording not found",
+  statusCode: 404,
+};
+
+/** Select a recording owned by the user, or null (leaks no existence info). */
+async function getOwned(id: string, userId: string) {
+  const rows = await db
+    .select()
+    .from(recordings)
+    .where(and(eq(recordings.id, id), eq(recordings.userId, userId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
 
 export async function recordingRoutes(app: FastifyInstance): Promise<void> {
-  // Ensure the S3 bucket exists on first request (LocalStack compat)
+  // Ensure the S3 bucket exists (LocalStack compat).
   await ensureBucket();
 
-  // ---- List all recordings ----
-  app.get("/api/recordings", async (_req, reply) => {
+  // Per-user auth seam on every recording route.
+  app.addHook("preHandler", authHook);
+
+  // ---- List the requesting user's recordings (newest first) ----
+  app.get("/api/recordings", async (req: FastifyRequest, reply: FastifyReply) => {
     const rows = await db
       .select()
       .from(recordings)
+      .where(eq(recordings.userId, req.user.id))
       .orderBy(desc(recordings.createdAt));
-
     return reply.send({ data: rows });
   });
 
-  // ---- Get a single recording ----
+  // ---- Fetch a single recording (owner-only) ----
   app.get<{ Params: { id: string } }>(
     "/api/recordings/:id",
     async (req, reply) => {
-      const rows = await db
-        .select()
-        .from(recordings)
-        .where(eq(recordings.id, req.params.id))
-        .limit(1);
-
-      if (rows.length === 0) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "Recording not found",
-          statusCode: 404,
-        });
-      }
-
-      return reply.send({ data: rows[0] });
+      const rec = await getOwned(req.params.id, req.user.id);
+      if (!rec) return reply.status(404).send(NOT_FOUND);
+      return reply.send({ data: rec });
     }
   );
 
-  // ---- Upload a recording ----
+  // ---- Step 1: create a metadata-only recording (status `local`) ----
   app.post("/api/recordings", async (req, reply) => {
-    const file = await req.file();
-    if (!file) {
+    const body = req.body as Record<string, unknown> | null;
+
+    const intervieweeName = String(body?.intervieweeName ?? "").trim();
+    if (!intervieweeName) {
       return reply.status(400).send({
         error: "Bad Request",
-        message: "Audio file is required",
+        message: "intervieweeName is required",
         statusCode: 400,
       });
     }
 
-    const fields = file.fields as Record<string, { value: string }>;
-    const title = fields.title?.value ?? "Untitled";
-    const intervieweeName = fields.intervieweeName?.value ?? "Unknown";
-    const tags = fields.tags?.value
-      ? fields.tags.value.split(",").map((t) => t.trim())
+    const durationMs = Number(body?.durationMs ?? 0);
+    if (!Number.isFinite(durationMs) || durationMs < 0) {
+      return reply.status(400).send({
+        error: "Bad Request",
+        message: "durationMs must be a non-negative number",
+        statusCode: 400,
+      });
+    }
+
+    const title =
+      String(body?.title ?? "").trim() || `Interview with ${intervieweeName}`;
+    const role = body?.role ? String(body.role) : null;
+    const notes = body?.notes ? String(body.notes) : null;
+    const tags = Array.isArray(body?.tags)
+      ? (body.tags as unknown[]).map(String)
       : [];
-    const notes = fields.notes?.value;
-    const durationMs = parseInt(fields.durationMs?.value ?? "0", 10);
+    const fileSizeBytes = body?.fileSizeBytes
+      ? Number(body.fileSizeBytes)
+      : 0;
+    const mimeType = body?.mimeType ? String(body.mimeType) : "audio/mp4";
 
-    const buffer = await file.toBuffer();
-    const recordingId = randomUUID();
-    const s3Key = `recordings/${recordingId}/${file.filename}`;
-
-    // Insert DB record
-    const [recording] = await db
+    const [rec] = await db
       .insert(recordings)
       .values({
-        id: recordingId,
-        userId: "00000000-0000-0000-0000-000000000001", // placeholder
+        userId: req.user.id,
         title,
         intervieweeName,
+        role,
         tags,
         notes,
         durationMs,
-        fileSizeBytes: buffer.length,
-        mimeType: file.mimetype,
-        s3Key,
+        fileSizeBytes,
+        mimeType,
         status: "local",
       })
       .returning();
 
-    // Upload in background (fire-and-forget for now)
-    syncRecordingToS3(recordingId, async () => {
-      await uploadToS3(s3Key, buffer, file.mimetype);
-    }).catch(console.error);
-
-    return reply.status(201).send({ data: recording });
+    return reply.status(201).send({ data: rec });
   });
 
-  // ---- Delete a recording ----
-  app.delete<{ Params: { id: string } }>(
-    "/api/recordings/:id",
+  // ---- Step 2: upload the audio file (local -> uploading -> synced) ----
+  app.post<{ Params: { id: string } }>(
+    "/api/recordings/:id/audio",
     async (req, reply) => {
-      const rows = await db
-        .delete(recordings)
-        .where(eq(recordings.id, req.params.id))
-        .returning();
+      const rec = await getOwned(req.params.id, req.user.id);
+      if (!rec) return reply.status(404).send(NOT_FOUND);
 
-      if (rows.length === 0) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "Recording not found",
-          statusCode: 404,
+      // Accept `local` (first upload) or `uploading` (recover a stuck attempt).
+      // `synced` is already done; `failed` must use the retry endpoint.
+      if (rec.status === "synced") {
+        return reply.status(409).send({
+          error: "Conflict",
+          message: "Recording is already synced",
+          statusCode: 409,
+        });
+      }
+      if (rec.status === "failed") {
+        return reply.status(400).send({
+          error: "Bad Request",
+          message: "Use /retry to re-upload a failed recording",
+          statusCode: 400,
         });
       }
 
-      return reply.send({ data: { deleted: true, id: rows[0].id } });
+      const file = await req.file();
+      if (!file) {
+        return reply.status(400).send({
+          error: "Bad Request",
+          message: "Audio file (multipart 'file' field) is required",
+          statusCode: 400,
+        });
+      }
+      const buffer = await file.toBuffer();
+      if (buffer.length === 0) {
+        return reply.status(400).send({
+          error: "Bad Request",
+          message: "Audio file is empty",
+          statusCode: 400,
+        });
+      }
+
+      try {
+        await uploadAudioRecording(
+          rec.id,
+          req.user.id,
+          buffer,
+          file.mimetype,
+          file.filename ?? "recording.m4a",
+          "local"
+        );
+      } catch {
+        // Transient S3 failure -> reverted to `local`; client retries.
+        return reply.status(503).send({
+          error: "Service Unavailable",
+          message: "Audio upload failed transiently; please retry",
+          statusCode: 503,
+        });
+      }
+
+      const updated = await getOwned(rec.id, req.user.id);
+      return reply.send({ data: updated });
     }
   );
 
-  // ---- Re-upload a failed recording ----
+  // ---- Retry: re-upload audio for a `failed` recording ----
   app.post<{ Params: { id: string } }>(
     "/api/recordings/:id/retry",
     async (req, reply) => {
-      const rows = await db
-        .select()
-        .from(recordings)
-        .where(eq(recordings.id, req.params.id))
-        .limit(1);
+      const rec = await getOwned(req.params.id, req.user.id);
+      if (!rec) return reply.status(404).send(NOT_FOUND);
 
-      if (rows.length === 0) {
-        return reply.status(404).send({
-          error: "Not Found",
-          message: "Recording not found",
-          statusCode: 404,
-        });
-      }
-
-      const recording = rows[0];
-      if (recording.status !== "failed") {
+      if (rec.status !== "failed") {
         return reply.status(400).send({
           error: "Bad Request",
           message: "Only failed recordings can be retried",
@@ -140,13 +193,78 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
         });
       }
 
-      // Re-attempt upload
-      syncRecordingToS3(recording.id, async () => {
-        // In practice, the file would need to be re-read from local storage
-        // For now, this is a placeholder
-      }).catch(console.error);
+      const file = await req.file();
+      if (!file) {
+        return reply.status(400).send({
+          error: "Bad Request",
+          message: "Audio file (multipart 'file' field) is required",
+          statusCode: 400,
+        });
+      }
+      const buffer = await file.toBuffer();
+      if (buffer.length === 0) {
+        return reply.status(400).send({
+          error: "Bad Request",
+          message: "Audio file is empty",
+          statusCode: 400,
+        });
+      }
 
-      return reply.send({ data: { retrying: true, id: recording.id } });
+      try {
+        await uploadAudioRecording(
+          rec.id,
+          req.user.id,
+          buffer,
+          file.mimetype,
+          file.filename ?? "recording.m4a",
+          "failed"
+        );
+      } catch {
+        return reply.status(503).send({
+          error: "Service Unavailable",
+          message: "Retry failed transiently; please try again",
+          statusCode: 503,
+        });
+      }
+
+      const updated = await getOwned(rec.id, req.user.id);
+      return reply.send({ data: updated });
+    }
+  );
+
+  // ---- Download / pre-signed audio URL (owner-only) ----
+  app.get<{ Params: { id: string } }>(
+    "/api/recordings/:id/audio",
+    async (req, reply) => {
+      const rec = await getOwned(req.params.id, req.user.id);
+      if (!rec) return reply.status(404).send(NOT_FOUND);
+      if (!rec.s3Key || rec.status !== "synced") {
+        return reply.status(409).send({
+          error: "Conflict",
+          message: "Audio is not yet available for this recording",
+          statusCode: 409,
+        });
+      }
+      const url = await getDownloadUrl(rec.s3Key);
+      return reply.send({ data: { url, mimeType: rec.mimeType } });
+    }
+  );
+
+  // ---- Delete a recording + its audio (owner-only) ----
+  app.delete<{ Params: { id: string } }>(
+    "/api/recordings/:id",
+    async (req, reply) => {
+      const rec = await getOwned(req.params.id, req.user.id);
+      if (!rec) return reply.status(404).send(NOT_FOUND);
+
+      if (rec.s3Key) await deleteFromS3(rec.s3Key);
+      await db
+        .delete(recordings)
+        .where(
+          and(eq(recordings.id, req.params.id), eq(recordings.userId, req.user.id))
+        );
+
+      return reply.send({ data: { deleted: true, id: rec.id } });
     }
   );
 }
