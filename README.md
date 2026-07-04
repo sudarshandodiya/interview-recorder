@@ -148,9 +148,58 @@ LocalStack and real S3 (just swap the endpoint).
 
 ### Sync with Retry
 
-Uploads happen asynchronously after the DB record is created. The sync
-service implements exponential backoff (1s → 2s → 4s) and transitions
-status through `local` → `uploading` → `synced` / `failed`.
+**ADR — Client-driven sync model.** The mobile client is the source of
+truth for sync status and owns the state machine. Recordings live on
+device with status `local`; the client drives `uploading` → `synced`
+(or `failed` after bounded retries). The backend is a store-and-serve
+service: it receives the finalized audio and metadata, records the
+server-side status, and serves audio back on demand. We deliberately
+rejected the alternative *server-driven fire-and-forget* model (the
+initial scaffold) because it cannot resume uploads across app cold
+starts, has no client-side retry across relaunches, and cannot honor the
+PRD's manual re-upload-of-`failed` story — all of which are required by
+the sync-integrity pillar (PRD §4).
+
+The backend API therefore uses a **two-step upload** contract:
+
+1. `POST /api/recordings` — metadata-only create; returns `id` with
+   status `local`. No audio yet.
+2. `POST /api/recordings/:id/audio` — multipart file upload; transitions
+   the recording to `synced` on success or `failed` on a non-transient
+   error. Transient errors (network / 5xx) leave the client free to
+   retry; non-transient errors (auth / 4xx) terminalize to `failed`.
+3. `POST /api/recordings/:id/retry` — re-accepts the audio for a
+   recording in `failed` status (else `400`).
+
+The mobile sync engine implements exponential backoff (1s → 2s → 4s →
+8s → 16s, 5 attempts) matching PRD §4/§5, classifies transient vs
+non-transient errors, and resets any row claiming `uploading` back to
+`local` on app relaunch so no recording is ever stuck in `uploading`.
+
+A server-side job queue (BullMQ + Redis) for true background upload is
+future scope (see §Potential Improvements).
+
+## Decisions (Open Questions Resolved)
+
+The following resolve the PRD §11 open questions for the MVP deliverable:
+
+- **Auth stub depth:** Per-interviewer stub via an `x-user-id` request
+  header that resolves to a seeded dev user (a couple of dev users are
+  seeded for testing). Swappable for a real provider (magic link / OIDC)
+  later — the per-user scoping seam is real. The PRD's *product
+  requirement* of real per-user auth remains; the stub is a **Known
+  Limitation** of this 2-day deliverable, not the spec.
+- **Audio format & quality:** AAC in an `.m4a` container, mono, 44.1 kHz,
+  ~96 kbps — a voice-suitable balance of fidelity and upload size over
+  flaky networks (uses `expo-av` defaults).
+- **Accessibility target:** Reasonable mobile accessibility (system font
+  scaling, sufficient contrast, accessibility labels on controls). No
+  formal WCAG conformance level targeted for the MVP.
+- **Max recording duration / storage quota:** None enforced for the MVP
+  (deferred to future scope). The 100 MB multipart cap on the backend is
+  the only practical ceiling.
+- **File integrity / resumable uploads:** Confirmed out of MVP (future
+  scope). Large/long interviews are the main residual risk.
 
 ## Known Limitations
 

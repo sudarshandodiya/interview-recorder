@@ -79,7 +79,8 @@ Upload a new recording. Send as `multipart/form-data`.
 |-------|------|----------|-------------|
 | `file` | binary | yes | Audio file to upload |
 | `title` | string | no | Title (defaults to "Untitled") |
-| `intervieweeName` | string | no | Interviewee name (defaults to "Unknown") |
+| `intervieweeName` | string | **yes** | Interviewee name (required) |
+| `role` | string | no | Interviewee role/position (e.g. "Senior Backend Engineer") |
 | `tags` | string | no | Comma-separated tags |
 | `notes` | string | no | Session notes |
 | `durationMs` | integer | no | Duration in milliseconds |
@@ -124,7 +125,8 @@ Re-attempt upload for a recording whose status is `"failed"`.
 | `id` | UUID | Primary key |
 | `userId` | UUID | Owner (placeholder) |
 | `title` | string | Human-readable title |
-| `intervieweeName` | string | Name of interviewee |
+| `intervieweeName` | string | Name of interviewee (required) |
+| `role` | string? | Interviewee role/position |
 | `tags` | string[] | Searchable tags |
 | `notes` | string? | Free-form session notes |
 | `durationMs` | integer | Recording duration |

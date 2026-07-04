@@ -28,6 +28,7 @@ export const recordings = pgTable("recordings", {
   title: varchar("title", { length: 512 }).notNull(),
 
   intervieweeName: varchar("interviewee_name", { length: 255 }).notNull(),
+  role: varchar("role", { length: 255 }),
   tags: text("tags").array().default([]),
   notes: text("notes"),
 
