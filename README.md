@@ -206,10 +206,14 @@ The following resolve the PRD §11 open questions for the MVP deliverable:
 - **Authentication**: Placeholder only — no real auth is implemented.
 - **Background uploads**: Uploads are fire-and-forget within the server
   process. A production system would use a job queue (BullMQ, etc.).
-- **Mobile local storage**: Not yet implemented — recordings currently
-  live in memory / temp files.
-- **Pre-signed URLs**: Download endpoint returns a placeholder URL.
-  Real pre-signed URLs should be generated server-side.
+- **Mobile local storage**: Recordings live on device in a durable JSON
+  manifest at `documentDirectory/recordings-manifest.json` and individual
+  `.m4a` audio files under `documentDirectory/recordings/`. The manifest is
+  the on-device source of truth for sync status.
+- **Pre-signed URLs**: The audio download endpoint now generates a real
+  short-lived pre-signed S3 URL via `@aws-sdk/s3-request-presigner`. Works
+  against both LocalStack (dev) and real S3. (Earlier drafts returned a
+  placeholder URL; that limitation is resolved.)
 
 ## Potential Improvements
 

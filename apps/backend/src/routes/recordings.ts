@@ -95,21 +95,50 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
       : 0;
     const mimeType = body?.mimeType ? String(body.mimeType) : "audio/mp4";
 
-    const [rec] = await db
-      .insert(recordings)
-      .values({
-        userId: req.user.id,
-        title,
-        intervieweeName,
-        role,
-        tags,
-        notes,
-        durationMs,
-        fileSizeBytes,
-        mimeType,
-        status: "local",
-      })
-      .returning();
+    // Optional client-supplied id: lets the offline-first mobile client pass
+    // its locally-generated recording id so the same id is used in the audio
+    // upload path (`POST /api/recordings/:id/audio`) without id remapping.
+    // When omitted, the schema's `defaultRandom()` generates one.
+    const clientId = body?.id ? String(body.id) : undefined;
+    // Idempotent create: a client retry with the same id returns the
+    // existing row instead of failing on PK conflict.
+    const rec = clientId
+      ? (
+          await db
+            .insert(recordings)
+            .values({
+              id: clientId,
+              userId: req.user.id,
+              title,
+              intervieweeName,
+              role,
+              tags,
+              notes,
+              durationMs,
+              fileSizeBytes,
+              mimeType,
+              status: "local",
+            })
+            .onConflictDoNothing({ target: recordings.id })
+            .returning()
+        )[0] ?? (await getOwned(clientId, req.user.id))
+      : (
+          await db
+            .insert(recordings)
+            .values({
+              userId: req.user.id,
+              title,
+              intervieweeName,
+              role,
+              tags,
+              notes,
+              durationMs,
+              fileSizeBytes,
+              mimeType,
+              status: "local",
+            })
+            .returning()
+        )[0];
 
     return reply.status(201).send({ data: rec });
   });

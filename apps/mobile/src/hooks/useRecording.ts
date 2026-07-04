@@ -30,6 +30,7 @@ export interface UseRecordingReturn {
   resume: () => Promise<void>;
   stop: () => Promise<Recording | null>;
   cancel: () => Promise<void>;
+  cleanup: () => Promise<void>;
   hasPermission: boolean;
   requestPermission: () => Promise<boolean>;
 }
@@ -125,6 +126,14 @@ export function useRecording(): UseRecordingReturn {
     pendingMetadata.current = { sessionId: "", startedAt: "" };
   }, []);
 
+  const cleanup = useCallback(async () => {
+    await recordingService.cleanup();
+    setState("idle");
+    setDurationMs(0);
+    setMetering(undefined);
+    pendingMetadata.current = { sessionId: "", startedAt: "" };
+  }, []);
+
   return {
     state,
     durationMs,
@@ -134,6 +143,7 @@ export function useRecording(): UseRecordingReturn {
     resume,
     stop,
     cancel,
+    cleanup,
     hasPermission,
     requestPermission,
   };

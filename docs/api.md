@@ -121,11 +121,14 @@ sent in this step.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `id` | uuid | no | Client-supplied recording id (lets the offline-first mobile client bind its locally-generated id to the server row; omitted → server generates one). The create is **idempotent** on a supplied `id` — a retry with the same id returns the existing row. |
 | `intervieweeName` | string | **yes** | Interviewee name |
 | `role` | string | no | Interviewee role/position |
 | `tags` | string[] | no | Searchable tags |
 | `notes` | string | no | Free-form session notes |
 | `durationMs` | number | no | Duration in milliseconds (default 0) |
+| `fileSizeBytes` | number | no | File size in bytes (default 0; updated on upload) |
+| `mimeType` | string | no | MIME type (default `audio/mp4`) |
 | `title` | string | no | Title (defaults to "Interview with \<name\>") |
 
 **Response** `201 Created`

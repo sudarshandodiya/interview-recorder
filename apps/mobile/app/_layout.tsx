@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { performAppLaunchRecovery } from "../src/services/durability.js";
+import { initSyncEngine } from "../src/services/syncEngine.js";
 
 /**
  * Root layout.
@@ -26,6 +27,12 @@ export default function RootLayout() {
       } catch (err) {
         // Recovery must never block app launch — log and continue.
         console.warn("[launch] recovery failed:", err);
+      }
+      // Kick the sync engine so pending `local` recordings start uploading.
+      try {
+        await initSyncEngine();
+      } catch (err) {
+        console.warn("[launch] sync engine init failed:", err);
       }
       if (!cancelled) setReady(true);
     })();

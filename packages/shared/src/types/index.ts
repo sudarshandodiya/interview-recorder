@@ -79,6 +79,13 @@ export interface ApiError {
 
 /** Step 1 — create a recording record with metadata only (status `local`). */
 export interface CreateRecordingPayload {
+  /**
+   * Optional client-supplied id. Lets the offline-first mobile client pass
+   * its locally-generated recording id so the same id is used in the audio
+   * upload path (`POST /api/recordings/:id/audio`) without id remapping.
+   * When omitted, the backend generates one via `defaultRandom()`.
+   */
+  id?: string;
   title: string;
   intervieweeName: string;
   role?: string;
