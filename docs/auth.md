@@ -127,4 +127,25 @@ edit, no CA install, no ngrok, no GitHub OAuth app.
 - The backend-to-Tinyauth call is one `fetch` per login (not per request), so
   Tinyauth availability only affects login, not steady-state API traffic.
 
+## TODOs
+
+### Tinyauth production configuration
+
+- [ ] **TLS.** Put Tinyauth behind a reverse proxy (Caddy, Traefik, Nginx)
+      with a real TLS certificate (Let's Encrypt). The backend picks up
+      `TINYAUTH_URL` — update it to the HTTPS endpoint.
+- [ ] **Strong credentials.** Replace `TINYAUTH_AUTH_USERS` with bcrypt
+      hashes generated via `tinyauth user create --docker`, or wire an
+      LDAP/OIDC provider (see [Tinyauth docs](https://tinyauth.app/docs)).
+- [ ] **OAuth whitelist.** Set `TINYAUTH_OAUTH_WHITELIST` (comma-separated
+      email addresses) to restrict which accounts can log in.
+- [ ] **Access controls.** Use `TINYAUTH_APPS_*` env vars or Docker labels
+      to restrict which users can access which apps.
+- [ ] **Session tuning.** Lower `TINYAUTH_AUTH_SESSIONEXPIRY` from the
+      default 24h to something appropriate for production.
+- [ ] **IP restrictions.** Configure `TINYAUTH_AUTH_IP_ALLOW` and
+      `TINYAUTH_AUTH_IP_BLOCK` for network-level access control.
+- [ ] **Audit logging.** Enable `TINYAUTH_LOG_STREAMS_AUDIT_ENABLED=true`
+      for security audit trails.
+
 [Tinyauth]: https://github.com/tinyauthapp/tinyauth

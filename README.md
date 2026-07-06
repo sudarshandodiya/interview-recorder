@@ -137,6 +137,13 @@ Run `mise tasks` to list all available tasks.
 | `db:studio` | Open Drizzle Studio (DB browser) |
 | `auth:up` | Start Tinyauth (HTTP credential store) |
 | `auth:down` | Stop Tinyauth |
+| `stack:up` | Start the full dev stack (DB, LocalStack, Tinyauth) |
+| `stack:down` | Stop the entire dev stack |
+| `maestro:test` | Run all Maestro E2E flows |
+| `maestro:install` | Build and install the app on the iOS simulator |
+| `maestro:smoke` | Run the smoke Maestro flow (no backend needed) |
+| `maestro:auth` | Run the auth Maestro flow (needs backend + Tinyauth) |
+| `maestro:create-recording` | Run the create-recording Maestro flow |
 | `clean` | Remove all build artifacts |
 
 ## API Documentation
@@ -284,4 +291,33 @@ machine and per-user scoping.
 - Job queue (BullMQ + Redis) for reliable background uploads
 - Add file integrity validation (checksums, resumable uploads)
 - Offline-first mobile with local SQLite (e.g., WatermelonDB)
-- Expo E2E tests with Detox or Maestro
+
+### TBD: Maestro E2E configuration
+
+- [ ] Run `maestro:install` once to build the iOS app on the simulator
+- [ ] Add `testID` props to key UI elements for reliable Maestro selectors
+- [ ] Create an `.eas/workflows/e2e-test-ios.yml` for iOS CI testing
+- [ ] Wire the EAS workflow trigger to GitHub Actions or pull requests
+- [ ] Pre-seed the simulator with a recording so the view-and-signout flow
+      can actually navigate into a non-empty recordings list
+- [ ] Add a network-mocking layer (or a local-only mock API) so the full
+      create-recording flow can run without a live backend (currently it
+      needs the backend + Tinyauth running)
+
+### TBD: Tinyauth production configuration
+
+- [ ] Replace dummy passwords (`pass1/2/3`) with strong, unique credentials
+      or an LDAP/OpenID Connect provider
+- [ ] Place Tinyauth behind TLS (e.g., Caddy with Let's Encrypt) for
+      non-local deployments
+- [ ] Set `TINYAUTH_OAUTH_WHITELIST` to restrict login to approved email
+      addresses (currently any GitHub account can log in if GitHub OAuth
+      credentials are configured)
+- [ ] Enable `TINYAUTH_OAUTH_AUTOREDIRECT=github` once GitHub OAuth is
+      configured for production (skips the login screen)
+- [ ] Enable `TINYAUTH_AUTH_IP_BLOCK` / `TINYAUTH_AUTH_IP_ALLOW` for
+      network-level access control
+- [ ] Configure `TINYAUTH_AUTH_SESSIONEXPIRY` to a shorter value for
+      production (default is 24h)
+- [ ] Rotate `TINYAUTH_AUTH_SECURECOOKIE` if forward-auth/cookie mode
+      is enabled alongside the session-JWT mode
