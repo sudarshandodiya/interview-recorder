@@ -81,6 +81,7 @@ export class RecordingService {
   private state: RecordingState = "idle";
   private sessionId: string | null = null;
   private audioPath: string | null = null;
+  private startTimestamp: number = 0;
   private onStatusUpdate: ((update: RecordingStatusUpdate) => void) | null =
     null;
 
@@ -142,6 +143,7 @@ export class RecordingService {
 
     // Prepare and start — the audio file is created in the persistent dir
     await this.recording.prepareToRecordAsync(VOICE_RECORDING_OPTIONS);
+    this.startTimestamp = Date.now();
     await this.recording.startAsync();
 
     this.state = "recording";
@@ -201,7 +203,13 @@ export class RecordingService {
 
     const status = await this.recording.stopAndUnloadAsync();
     const uri = this.recording.getURI();
-    const durationMs = status.durationMillis ?? 0;
+    // expo-av's durationMillis can return 0 across some SDK/device combos.
+    // Fall back to wall-clock elapsed so the UI never shows 0:00.
+    const elapsedMs = Date.now() - this.startTimestamp;
+    const durationMs =
+      (status.durationMillis ?? 0) > 0
+        ? status.durationMillis!
+        : elapsedMs;
 
     if (!uri) {
       throw new Error("Recording produced no audio file");

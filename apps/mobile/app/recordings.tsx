@@ -116,7 +116,9 @@ export default function RecordingsScreen() {
               </View>
               <Text style={styles.meta} numberOfLines={1}>
                 {item.role ? `${item.role} · ` : ""}
-                {formatTime(item.durationMs)}
+                {item.durationMs > 0
+                  ? formatTime(item.durationMs)
+                  : "--"}
                 {item.tags && item.tags.length > 0
                   ? ` · ${item.tags.join(", ")}`
                   : ""}
