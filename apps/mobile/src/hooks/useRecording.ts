@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { Recording } from "@interview-recorder/shared";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "../auth/AuthContext";
+import { upsertRecording } from "../services/localStore";
 import {
-  recordingService,
   type RecordingState,
   type RecordingStatusUpdate,
+  recordingService,
 } from "../services/recordingService";
-import { upsertRecording } from "../services/localStore";
 import { AUDIO_MIME_TYPE } from "../utils/constants";
 
 // ---------------------------------------------------------------------------
@@ -36,6 +37,7 @@ export interface UseRecordingReturn {
 }
 
 export function useRecording(): UseRecordingReturn {
+  const { userId } = useAuth();
   const [state, setState] = useState<RecordingState>("idle");
   const [durationMs, setDurationMs] = useState(0);
   const [metering, setMetering] = useState<number | undefined>(undefined);
@@ -92,7 +94,7 @@ export function useRecording(): UseRecordingReturn {
     const now = new Date().toISOString();
     const recording: Recording = {
       id: result.sessionId,
-      userId: "", // Filled by auth/sync layer (T-005 stub auth)
+      userId: userId ?? "",
       title: "Untitled",
       intervieweeName: "Unknown",
       role: undefined,
@@ -116,7 +118,7 @@ export function useRecording(): UseRecordingReturn {
     setMetering(undefined);
 
     return recording;
-  }, []);
+  }, [userId]);
 
   const cancel = useCallback(async () => {
     await recordingService.cancel();

@@ -1,6 +1,6 @@
+import { and, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { recordings } from "../db/schema.js";
-import { eq, and } from "drizzle-orm";
 import { uploadToS3 } from "./storage.js";
 
 // ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ export async function uploadAudioRecording(
   buffer: Buffer,
   mimeType: string,
   filename: string,
-  revertTo: "local" | "failed"
+  revertTo: "local" | "failed",
 ): Promise<void> {
   const s3Key = `recordings/${userId}/${recordingId}/${filename}`;
 
@@ -60,7 +60,7 @@ export async function uploadAudioRecording(
         mimeType,
       })
       .where(
-        and(eq(recordings.id, recordingId), eq(recordings.userId, userId))
+        and(eq(recordings.id, recordingId), eq(recordings.userId, userId)),
       );
   } catch (err) {
     // Transient: revert so the client can retry from a known state.
@@ -68,7 +68,7 @@ export async function uploadAudioRecording(
       .update(recordings)
       .set({ status: revertTo })
       .where(
-        and(eq(recordings.id, recordingId), eq(recordings.userId, userId))
+        and(eq(recordings.id, recordingId), eq(recordings.userId, userId)),
       );
     throw err;
   }

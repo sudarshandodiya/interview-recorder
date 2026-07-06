@@ -10,7 +10,7 @@
     "./types": "./src/types/index.ts"
   },
   "scripts": {
-    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "devDependencies": {

@@ -113,7 +113,10 @@ export type ListRecordingsResponse = ApiResponse<Recording[]>;
 export type GetRecordingResponse = ApiResponse<Recording>;
 
 /** Delete a recording and its associated audio file. */
-export type DeleteRecordingResponse = ApiResponse<{ deleted: true; id: string }>;
+export type DeleteRecordingResponse = ApiResponse<{
+  deleted: true;
+  id: string;
+}>;
 
 /** Where to fetch the audio stream for a recording (per-user scoped). */
 export type AudioUrlResponse = ApiResponse<{ url: string; mimeType: string }>;

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { View, StyleSheet, Animated, ViewStyle } from "react-native";
+import { Animated, StyleSheet, View, type ViewStyle } from "react-native";
 
 // ---------------------------------------------------------------------------
 // Waveform (T-011) — lightweight animated bar visualization derived from
@@ -29,7 +29,9 @@ function normalise(metering: number | undefined): number {
 }
 
 export function Waveform({ metering, active }: Props) {
-  const heights = useRef(Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.05)));
+  const heights = useRef(
+    Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.05)),
+  );
   const idx = useRef(0);
 
   useEffect(() => {

@@ -1,14 +1,14 @@
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { and, desc, eq } from "drizzle-orm";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../db/index.js";
 import { recordings } from "../db/schema.js";
-import { eq, and, desc } from "drizzle-orm";
+import { authHook } from "../services/auth.js";
 import {
+  deleteFromS3,
   ensureBucket,
   getDownloadUrl,
-  deleteFromS3,
 } from "../services/storage.js";
 import { uploadAudioRecording } from "../services/sync.js";
-import { authHook } from "../services/auth.js";
 
 // ---------------------------------------------------------------------------
 // Recording routes — per-user scoped (PRD §6 "Per-user privacy", §7 auth seam).
@@ -25,7 +25,8 @@ const NOT_FOUND = {
 };
 
 /** Minimal RFC 4122 UUID check so a client-supplied id fails as 400, not 500. */
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function isValidUuid(s: string): boolean {
   return UUID_RE.test(s);
 }
@@ -48,14 +49,17 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
   app.addHook("preHandler", authHook);
 
   // ---- List the requesting user's recordings (newest first) ----
-  app.get("/api/recordings", async (req: FastifyRequest, reply: FastifyReply) => {
-    const rows = await db
-      .select()
-      .from(recordings)
-      .where(eq(recordings.userId, req.user.id))
-      .orderBy(desc(recordings.createdAt));
-    return reply.send({ data: rows });
-  });
+  app.get(
+    "/api/recordings",
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      const rows = await db
+        .select()
+        .from(recordings)
+        .where(eq(recordings.userId, req.user.id))
+        .orderBy(desc(recordings.createdAt));
+      return reply.send({ data: rows });
+    },
+  );
 
   // ---- Fetch a single recording (owner-only) ----
   app.get<{ Params: { id: string } }>(
@@ -64,7 +68,7 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
       const rec = await getOwned(req.params.id, req.user.id);
       if (!rec) return reply.status(404).send(NOT_FOUND);
       return reply.send({ data: rec });
-    }
+    },
   );
 
   // ---- Step 1: create a metadata-only recording (status `local`) ----
@@ -96,9 +100,7 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
     const tags = Array.isArray(body?.tags)
       ? (body.tags as unknown[]).map(String)
       : [];
-    const fileSizeBytes = body?.fileSizeBytes
-      ? Number(body.fileSizeBytes)
-      : 0;
+    const fileSizeBytes = body?.fileSizeBytes ? Number(body.fileSizeBytes) : 0;
     const mimeType = body?.mimeType ? String(body.mimeType) : "audio/mp4";
 
     // Optional client-supplied id: lets the offline-first mobile client pass
@@ -118,7 +120,7 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
     // Idempotent create: a client retry with the same id returns the
     // existing row instead of failing on PK conflict.
     const rec = clientId
-      ? (
+      ? ((
           await db
             .insert(recordings)
             .values({
@@ -136,7 +138,7 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
             })
             .onConflictDoNothing({ target: recordings.id })
             .returning()
-        )[0] ?? (await getOwned(clientId, req.user.id))
+        )[0] ?? (await getOwned(clientId, req.user.id)))
       : (
           await db
             .insert(recordings)
@@ -206,7 +208,7 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
           buffer,
           file.mimetype,
           file.filename ?? "recording.m4a",
-          "local"
+          "local",
         );
       } catch {
         // Transient S3 failure -> reverted to `local`; client retries.
@@ -219,7 +221,7 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
 
       const updated = await getOwned(rec.id, req.user.id);
       return reply.send({ data: updated });
-    }
+    },
   );
 
   // ---- Retry: re-upload audio for a `failed` recording ----
@@ -261,7 +263,7 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
           buffer,
           file.mimetype,
           file.filename ?? "recording.m4a",
-          "failed"
+          "failed",
         );
       } catch {
         return reply.status(503).send({
@@ -273,7 +275,7 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
 
       const updated = await getOwned(rec.id, req.user.id);
       return reply.send({ data: updated });
-    }
+    },
   );
 
   // ---- Download / pre-signed audio URL (owner-only) ----
@@ -291,7 +293,7 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
       }
       const url = await getDownloadUrl(rec.s3Key);
       return reply.send({ data: { url, mimeType: rec.mimeType } });
-    }
+    },
   );
 
   // ---- Delete a recording + its audio (owner-only) ----
@@ -305,10 +307,13 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
       await db
         .delete(recordings)
         .where(
-          and(eq(recordings.id, req.params.id), eq(recordings.userId, req.user.id))
+          and(
+            eq(recordings.id, req.params.id),
+            eq(recordings.userId, req.user.id),
+          ),
         );
 
       return reply.send({ data: { deleted: true, id: rec.id } });
-    }
+    },
   );
 }

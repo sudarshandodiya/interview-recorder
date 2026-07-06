@@ -1,8 +1,8 @@
 import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
   CreateBucketCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getEnv } from "../config/env.js";
@@ -27,7 +27,7 @@ export const s3Client = new S3Client({
 export async function uploadToS3(
   key: string,
   body: Buffer,
-  mimeType: string
+  mimeType: string,
 ): Promise<void> {
   await s3Client.send(
     new PutObjectCommand({
@@ -35,7 +35,7 @@ export async function uploadToS3(
       Key: key,
       Body: body,
       ContentType: mimeType,
-    })
+    }),
   );
 }
 
@@ -45,12 +45,12 @@ export async function uploadToS3(
  */
 export async function getDownloadUrl(
   key: string,
-  expiresInSeconds = 900
+  expiresInSeconds = 900,
 ): Promise<string> {
   return getSignedUrl(
     s3Client,
     new GetObjectCommand({ Bucket: env.S3_BUCKET_NAME, Key: key }),
-    { expiresIn: expiresInSeconds }
+    { expiresIn: expiresInSeconds },
   );
 }
 
@@ -59,7 +59,7 @@ export async function deleteFromS3(key: string): Promise<void> {
   const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
   try {
     await s3Client.send(
-      new DeleteObjectCommand({ Bucket: env.S3_BUCKET_NAME, Key: key })
+      new DeleteObjectCommand({ Bucket: env.S3_BUCKET_NAME, Key: key }),
     );
   } catch {
     // Object may already be absent — tolerate so DELETE is idempotent.
@@ -70,7 +70,7 @@ export async function deleteFromS3(key: string): Promise<void> {
 export async function ensureBucket(): Promise<void> {
   try {
     await s3Client.send(
-      new CreateBucketCommand({ Bucket: env.S3_BUCKET_NAME })
+      new CreateBucketCommand({ Bucket: env.S3_BUCKET_NAME }),
     );
   } catch {
     // Bucket may already exist — that's fine for LocalStack.

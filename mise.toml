@@ -46,16 +46,28 @@ description = "Run backend tests"
 run = "pnpm --filter @interview-recorder/backend test"
 
 [tasks.lint]
-description = "Lint all packages"
+description = "Run Biome linter on all packages"
 run = "pnpm lint"
 
-[tasks."lint:backend"]
-description = "Lint the backend"
-run = "pnpm --filter @interview-recorder/backend lint"
+[tasks.format]
+description = "Format all files with Biome"
+run = "pnpm format"
+
+[tasks."format:check"]
+description = "Check formatting without writing"
+run = "pnpm format:check"
+
+[tasks.typecheck]
+description = "Type-check all packages (tsc)"
+run = "pnpm typecheck"
+
+[tasks."typecheck:backend"]
+description = "Type-check the backend only"
+run = "pnpm --filter @interview-recorder/backend typecheck"
 
 [tasks.check]
-description = "Run all checks (lint + test)"
-depends = ["lint", "test"]
+description = "Run all checks (lint + format:check + typecheck + test)"
+depends = ["lint", "format:check", "typecheck", "test"]
 
 [tasks."db:up"]
 description = "Start PostgreSQL and LocalStack"
@@ -72,10 +84,47 @@ run = "pnpm --filter @interview-recorder/backend db:migrate"
 [tasks."db:studio"]
 description = "Open Drizzle Studio (DB browser)"
 run = "pnpm --filter @interview-recorder/backend db:studio"
-
 [tasks.clean]
 description = "Remove build artifacts and node_modules"
 run = [
   "pnpm -r exec rm -rf dist build .turbo .expo",
   "rm -rf node_modules",
 ]
+
+# --- Tinyauth (HTTP credential store) ---
+# Start Tinyauth over HTTP (no Caddy/HTTPS/hosts edits). The backend validates
+# interviewer credentials against it; three dummy accounts are seeded via
+# TINYAUTH_AUTH_USERS. See docs/auth.md.
+[tasks."auth:up"]
+description = "Start Tinyauth (HTTP credential store)"
+run = "docker compose up -d tinyauth"
+
+[tasks."auth:down"]
+description = "Stop Tinyauth"
+run = "docker compose down tinyauth"
+
+# --- Deepsec (AI-powered vulnerability scanner) ---
+[tasks.deepsec]
+description = "Run deepsec commands (AI vulnerability scanner) with deepseek-v4-flash"
+dir = "{{ config_root }}/.deepsec"
+run = "pnpm deepsec --model deepseek-v4-flash"
+
+[tasks."deepsec:scan"]
+description = "Scan for candidate vulnerability sites"
+dir = "{{ config_root }}/.deepsec"
+run = "pnpm deepsec scan"
+
+[tasks."deepsec:process"]
+description = "Investigate candidates with AI agent using deepseek-v4-flash"
+dir = "{{ config_root }}/.deepsec"
+run = "pnpm deepsec process --agent pi --model deepseek-v4-flash"
+
+[tasks."deepsec:report"]
+description = "Generate markdown + JSON report from current analysis"
+dir = "{{ config_root }}/.deepsec"
+run = "pnpm deepsec report"
+
+[tasks."deepsec:status"]
+description = "Show current state of the project mirror"
+dir = "{{ config_root }}/.deepsec"
+run = "pnpm deepsec status"

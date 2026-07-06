@@ -1,14 +1,14 @@
 import type {
-  Recording,
-  CreateRecordingPayload,
   ApiError,
   AudioUrlResponse,
-  ListRecordingsResponse,
-  GetRecordingResponse,
+  CreateRecordingPayload,
   CreateRecordingResponse,
-  UploadAudioResponse,
-  RetryUploadResponse,
   DeleteRecordingResponse,
+  GetRecordingResponse,
+  ListRecordingsResponse,
+  Recording,
+  RetryUploadResponse,
+  UploadAudioResponse,
 } from "@interview-recorder/shared";
 
 // ---------------------------------------------------------------------------
@@ -23,34 +23,54 @@ import type {
 //   - deleteRecording  -> DELETE /api/recordings/:id
 //   - getAudioUrl      -> GET  /api/recordings/:id/audio (presigned url)
 //
-// Auth: per-interviewer stub via `x-user-id` header (see README Decisions +
-// backend services/auth.ts).
+// Auth: Tinyauth (OIDC). The id token is held by `tokenStore` and attached as
+// `Authorization: Bearer <token>` to every request. A 401 invokes the
+// registered `onAuthExpired` callback so the AuthProvider can drop the token
+// and show the login screen. See src/auth/AuthContext.ts.
 // ---------------------------------------------------------------------------
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
-export const USER_ID =
-  process.env.EXPO_PUBLIC_USER_ID ??
-  "00000000-0000-0000-0000-000000000001";
+
+// --- Bearer token holder (set by AuthProvider; read by every request) -------
+let authToken: string | null = null;
+let onAuthExpired: (() => void) | null = null;
+
+export function setAuthToken(token: string | null): void {
+  authToken = token;
+}
+
+export function setOnAuthExpired(cb: (() => void) | null): void {
+  onAuthExpired = cb;
+}
 
 interface FetchError extends Error {
   status?: number;
   networkError?: boolean;
 }
 
-async function request<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<T> {
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (authToken) headers.authorization = `Bearer ${authToken}`;
+  return headers;
+}
+
+function handleStatus(status: number): void {
+  if (status === 401 && onAuthExpired) {
+    // Token missing/invalid/expired — surface to the AuthProvider so it clears
+    // secure storage and shows the login screen again.
+    onAuthExpired();
+  }
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  headers.set("x-user-id", USER_ID);
+  for (const [k, v] of Object.entries(authHeaders())) headers.set(k, v);
 
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}${path}`, { ...init, headers });
   } catch (err) {
-    const e: FetchError = new Error(
-      `Network error: ${(err as Error).message}`
-    );
+    const e: FetchError = new Error(`Network error: ${(err as Error).message}`);
     e.networkError = true;
     throw e;
   }
@@ -61,10 +81,9 @@ async function request<T>(
   const body = text ? JSON.parse(text) : undefined;
 
   if (!res.ok) {
+    handleStatus(res.status);
     const apiErr = body as ApiError | undefined;
-    const e: FetchError = new Error(
-      apiErr?.message ?? `HTTP ${res.status}`
-    );
+    const e: FetchError = new Error(apiErr?.message ?? `HTTP ${res.status}`);
     e.status = res.status;
     throw e;
   }
@@ -82,18 +101,18 @@ async function uploadAudioFile(
   path: string,
   fileUri: string,
   mimeType: string,
-  filename = "recording.m4a"
+  filename = "recording.m4a",
 ): Promise<Recording> {
   const form = new FormData();
   form.append("file", {
     uri: fileUri,
     name: filename,
     type: mimeType,
-  // RN FormData typing is loose; cast through unknown to avoid TS noise.
+    // RN FormData typing is loose; cast through unknown to avoid TS noise.
   } as unknown as Blob);
 
   const headers = new Headers();
-  headers.set("x-user-id", USER_ID);
+  for (const [k, v] of Object.entries(authHeaders())) headers.set(k, v);
 
   let res: Response;
   try {
@@ -103,9 +122,7 @@ async function uploadAudioFile(
       body: form,
     });
   } catch (err) {
-    const e: FetchError = new Error(
-      `Network error: ${(err as Error).message}`
-    );
+    const e: FetchError = new Error(`Network error: ${(err as Error).message}`);
     e.networkError = true;
     throw e;
   }
@@ -113,6 +130,7 @@ async function uploadAudioFile(
   const text = await res.text();
   const body = text ? JSON.parse(text) : undefined;
   if (!res.ok) {
+    handleStatus(res.status);
     const apiErr = body as ApiError | undefined;
     const e: FetchError = new Error(apiErr?.message ?? `HTTP ${res.status}`);
     e.status = res.status;
@@ -128,7 +146,7 @@ async function uploadAudioFile(
 
 /** Step 1 — create a metadata-only recording (status `local`). */
 export async function createRecording(
-  payload: CreateRecordingPayload
+  payload: CreateRecordingPayload,
 ): Promise<Recording> {
   const res = await request<CreateRecordingResponse>("/api/recordings", {
     method: "POST",
@@ -143,9 +161,14 @@ export function uploadAudio(
   id: string,
   fileUri: string,
   mimeType: string,
-  filename?: string
+  filename?: string,
 ): Promise<Recording> {
-  return uploadAudioFile(`/api/recordings/${id}/audio`, fileUri, mimeType, filename);
+  return uploadAudioFile(
+    `/api/recordings/${id}/audio`,
+    fileUri,
+    mimeType,
+    filename,
+  );
 }
 
 /** Manual re-upload of audio for a recording in `failed` status. */
@@ -153,9 +176,14 @@ export function retryUpload(
   id: string,
   fileUri: string,
   mimeType: string,
-  filename?: string
+  filename?: string,
 ): Promise<Recording> {
-  return uploadAudioFile(`/api/recordings/${id}/retry`, fileUri, mimeType, filename);
+  return uploadAudioFile(
+    `/api/recordings/${id}/retry`,
+    fileUri,
+    mimeType,
+    filename,
+  );
 }
 
 /** List the requesting interviewer's recordings (most recent first). */
@@ -172,7 +200,7 @@ export async function getRecording(id: string): Promise<Recording> {
 
 /** Delete a recording and its audio file (owner-only). */
 export async function deleteRecording(
-  id: string
+  id: string,
 ): Promise<{ deleted: true; id: string }> {
   const res = await request<DeleteRecordingResponse>(`/api/recordings/${id}`, {
     method: "DELETE",
@@ -182,11 +210,11 @@ export async function deleteRecording(
 
 /** Fetch the presigned/serve URL and mime type for playback (owner-only). */
 export async function getAudioUrl(
-  id: string
+  id: string,
 ): Promise<{ url: string; mimeType: string }> {
   const res = await request<AudioUrlResponse>(`/api/recordings/${id}/audio`);
   return res.data;
 }
 
 // Re-export for sync engine convenience.
-export type { FetchError, UploadAudioResponse, RetryUploadResponse };
+export type { FetchError, RetryUploadResponse, UploadAudioResponse };

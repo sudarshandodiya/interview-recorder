@@ -1,5 +1,5 @@
-import { Text, View, StyleSheet } from "react-native";
 import type { SyncStatus } from "@interview-recorder/shared";
+import { StyleSheet, Text, View } from "react-native";
 
 // ---------------------------------------------------------------------------
 // StatusBadge (T-014) — coloured pill showing a recording's sync status.

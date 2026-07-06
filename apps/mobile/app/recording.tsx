@@ -1,23 +1,22 @@
-import { useEffect, useState, useCallback } from "react";
+import type { Recording } from "@interview-recorder/shared";
+import type { Href } from "expo-router";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import type { Href } from "expo-router";
-import { useRecording } from "../src/hooks/useRecording";
 import { Waveform } from "../src/components/Waveform";
+import { formatTime } from "../src/hooks/usePlayback";
+import { useRecording } from "../src/hooks/useRecording";
 import { upsertRecording } from "../src/services/localStore";
 import { enqueueUpload } from "../src/services/syncEngine";
-import { AUDIO_MIME_TYPE } from "../src/utils/constants";
-import { formatTime } from "../src/hooks/usePlayback";
-import type { Recording } from "@interview-recorder/shared";
 
 // ---------------------------------------------------------------------------
 // Recording screen — F1 (start/pause/resume/stop), F2 (waveform + timer),
@@ -92,7 +91,10 @@ export default function RecordingScreen() {
       <View style={styles.container}>
         <Text style={styles.timer}>{formatTime(rec.durationMs)}</Text>
         <View style={styles.waveformWrap}>
-          <Waveform metering={rec.metering} active={rec.state === "recording"} />
+          <Waveform
+            metering={rec.metering}
+            active={rec.state === "recording"}
+          />
         </View>
 
         <Text style={styles.stateLabel} accessibilityLiveRegion="polite">
@@ -300,12 +302,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primary: { backgroundColor: "#0b5ed7" },
-  secondary: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#0b5ed7" },
+  secondary: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#0b5ed7",
+  },
   stop: { backgroundColor: "#dc3545" },
-  ghost: { backgroundColor: "transparent", borderWidth: 1, borderColor: "#dee2e6" },
+  ghost: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#dee2e6",
+  },
   controlTextLight: { color: "#fff", fontWeight: "600", fontSize: 16 },
   controlTextDark: { color: "#495057", fontWeight: "600", fontSize: 16 },
-  sectionTitle: { fontSize: 22, fontWeight: "700", color: "#1a1a2e", marginBottom: 4 },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1a1a2e",
+    marginBottom: 4,
+  },
   helper: { fontSize: 14, color: "#6c757d", marginBottom: 16 },
   field: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: "600", color: "#343a40", marginBottom: 6 },

@@ -1,14 +1,16 @@
-import { Audio } from "expo-av";
-import type { RecordingOptions, RecordingStatus } from "expo-av/build/Audio/Recording.types";
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
+import type {
+  RecordingOptions,
+  RecordingStatus,
+} from "expo-av/build/Audio/Recording.types";
 import * as FileSystem from "expo-file-system";
 import {
-  RECORDINGS_DIR,
-  SESSION_SUFFIX,
   AUDIO_EXTENSION,
   ensureRecordingsDir,
   generateId,
+  RECORDINGS_DIR,
+  SESSION_SUFFIX,
 } from "../utils/constants";
-import { InterruptionModeIOS, InterruptionModeAndroid } from "expo-av";
 
 // ---------------------------------------------------------------------------
 // Mobile recording service (T-010)
@@ -292,7 +294,7 @@ export class RecordingService {
       await ensureRecordingsDir();
       await FileSystem.writeAsStringAsync(
         this.getSessionManifestPath(),
-        JSON.stringify(manifest, null, 2)
+        JSON.stringify(manifest, null, 2),
       );
     } catch (err) {
       // Non-fatal — manifest is best-effort for crash recovery

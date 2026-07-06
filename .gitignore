@@ -42,3 +42,13 @@ coverage/
 
 # Docker
 docker-compose.override.yml
+
+# Deepsec security scanning
+.deepsec/
+
+# Async subagent artifacts
+.pi-subagents/
+
+# Prebuild artifacts (generated, not committed)
+apps/mobile/ios/
+apps/mobile/android/

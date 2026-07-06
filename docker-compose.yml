@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -39,6 +37,43 @@ services:
       - localstack_data:/var/lib/localstack
       - /var/run/docker.sock:/var/run/docker.sock
 
+  # -------------------------------------------------------------------------
+  # Tinyauth — username/password credential store (HTTP, no HTTPS needed).
+  #
+  # Runs in plain forward-auth/Basic-auth mode over HTTP. Only Tinyauth's OIDC
+  # *server* mode requires HTTPS; we don't use it. The backend validates
+  # interviewer credentials by calling Tinyauth's forward-auth endpoint
+  # (`/api/auth/traefik`) with the request's Basic auth header, then issues its
+  # own session JWT so the mobile app only ever sends a bearer token.
+  #
+  # Three dummy accounts are seeded via TINYAUTH_AUTH_USERS so login works
+  # zero-config on `docker compose up`. Tinyauth is NOT exposed to the mobile
+  # app — only the backend (on the host) talks to it at http://localhost:3001.
+  # -------------------------------------------------------------------------
+  tinyauth:
+    image: ghcr.io/tinyauthapp/tinyauth:v5
+    container_name: interview-recorder-tinyauth
+    restart: unless-stopped
+    environment:
+      # HTTP base URL. Becomes the domain of the pseudo email Tinyauth synthesize
+      # for password users (e.g. interviewer1@interview-recorder.local). HTTP is
+      # fine — we use forward-auth/Basic auth, not the OIDC server.
+      - TINYAUTH_APPURL=http://interview-recorder.local
+      # Persist Tinyauth's DB inside the /data volume.
+      - TINYAUTH_DATABASE_PATH=/data/tinyauth.db
+      # 3 dummy accounts so login works zero-config on `docker compose up`.
+      # Hashes generated with `tinyauth user create --docker`. `$$` is the
+      # compose-escaped `$`.
+      #   interviewer1 / pass1
+      #   interviewer2 / pass2
+      #   interviewer3 / pass3
+      - TINYAUTH_AUTH_USERS=interviewer1:$$2a$$10$$351EMldQtYLoIEAbDs3w0u0KVGKSmPZhuV9blog6kOjkaR5MnH9C6,interviewer2:$$2a$$10$$JuO0xiOVh5nWOyvVKhSQxuyzXjfxHULmjhbAjNcqyUnRP3jrVRyxu,interviewer3:$$2a$$10$$kE6PyR4nwl7NYxM4KEZOc.HX0H0RJrr04eQ5EK1n2ACD3R33zR3Fy
+    ports:
+      - "3001:3000"
+    volumes:
+      - tinyauth_data:/data
+
 volumes:
   pgdata:
   localstack_data:
+  tinyauth_data:

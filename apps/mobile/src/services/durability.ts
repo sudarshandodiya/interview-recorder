@@ -1,14 +1,13 @@
-import * as FileSystem from "expo-file-system";
 import type { Recording } from "@interview-recorder/shared";
+import * as FileSystem from "expo-file-system";
 import {
-  RECORDINGS_DIR,
-  SESSION_SUFFIX,
-  AUDIO_EXTENSION,
   AUDIO_MIME_TYPE,
   ensureRecordingsDir,
+  RECORDINGS_DIR,
+  SESSION_SUFFIX,
 } from "../utils/constants";
+import { currentUserId, getRecording, upsertRecording } from "./localStore";
 import type { SessionManifest } from "./recordingService";
-import { upsertRecording, getRecording } from "./localStore";
 
 // ---------------------------------------------------------------------------
 // Capture durability — crash recovery (T-012)
@@ -81,20 +80,19 @@ export async function recoverInterruptedSessions(): Promise<
       }
 
       // Get the file size as a best-effort duration proxy
-      const fileSizeBytes =
-        (audioInfo as { size?: number }).size ?? 0;
+      const fileSizeBytes = (audioInfo as { size?: number }).size ?? 0;
 
       // Create a Recording entry for the partial audio
       const now = new Date().toISOString();
       const recording: Recording = {
         id: manifest.id,
-        userId: "", // Filled by auth/sync layer
+        userId: currentUserId ?? "",
+
         title: "Recovered Recording",
         intervieweeName: "Unknown",
         role: undefined,
         tags: [],
-        notes:
-          "This recording was recovered after an unexpected interruption.",
+        notes: "This recording was recovered after an unexpected interruption.",
         durationMs: 0, // Unknown until playback reads metadata; sync fills it
         fileSizeBytes,
         mimeType: AUDIO_MIME_TYPE,
@@ -119,7 +117,7 @@ export async function recoverInterruptedSessions(): Promise<
     } catch (err) {
       console.warn(
         `[durability] failed to recover session ${sessionFile}:`,
-        err
+        err,
       );
     }
   }

@@ -1,12 +1,12 @@
 import * as FileSystem from "expo-file-system";
 
 /**
-* Persistent directory for recording audio files and session manifests.
-*
-* We write to `documentDirectory` (not `cacheDirectory`) because audio must
-* survive app kills, OS memory pressure, and reboots. This is the PRD's
-* non-negotiable #1 — zero recording loss on crash/kill/interruption.
-*/
+ * Persistent directory for recording audio files and session manifests.
+ *
+ * We write to `documentDirectory` (not `cacheDirectory`) because audio must
+ * survive app kills, OS memory pressure, and reboots. This is the PRD's
+ * non-negotiable #1 — zero recording loss on crash/kill/interruption.
+ */
 export const RECORDINGS_DIR = `${FileSystem.documentDirectory}recordings/`;
 
 /**

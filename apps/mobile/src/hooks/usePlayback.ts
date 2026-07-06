@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { Audio } from "expo-av";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ---------------------------------------------------------------------------
 // usePlayback (T-018) — seekable in-app audio player.
@@ -80,14 +80,11 @@ export function usePlayback() {
     setState((s) => ({ ...s, isPlaying: false }));
   }, []);
 
-  const seek = useCallback(
-    async (positionMs: number) => {
-      if (!soundRef.current) return;
-      await soundRef.current.setPositionAsync(positionMs);
-      setState((s) => ({ ...s, positionMs }));
-    },
-    []
-  );
+  const seek = useCallback(async (positionMs: number) => {
+    if (!soundRef.current) return;
+    await soundRef.current.setPositionAsync(positionMs);
+    setState((s) => ({ ...s, positionMs }));
+  }, []);
 
   // Poll position while playing (cheap at ~500ms).
   useEffect(() => {
@@ -95,12 +92,19 @@ export function usePlayback() {
     const id = setInterval(async () => {
       if (!soundRef.current) return;
       const st = await soundRef.current.getStatusAsync();
-      const s = st as { isLoaded: boolean; positionMillis?: number; didJustFinish?: boolean };
+      const s = st as {
+        isLoaded: boolean;
+        positionMillis?: number;
+        didJustFinish?: boolean;
+      };
       if (s.didJustFinish) {
         setState((prev) => ({ ...prev, isPlaying: false, positionMs: 0 }));
         return;
       }
-      setState((prev) => ({ ...prev, positionMs: s.positionMillis ?? prev.positionMs }));
+      setState((prev) => ({
+        ...prev,
+        positionMs: s.positionMillis ?? prev.positionMs,
+      }));
     }, 500);
     return () => clearInterval(id);
   }, [state.isPlaying]);

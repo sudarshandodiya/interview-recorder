@@ -1,6 +1,6 @@
-import * as FileSystem from "expo-file-system";
 import type { Recording, SyncStatus } from "@interview-recorder/shared";
-import { MANIFEST_FILE, ensureRecordingsDir } from "../utils/constants";
+import * as FileSystem from "expo-file-system";
+import { ensureRecordingsDir, MANIFEST_FILE } from "../utils/constants";
 
 // ---------------------------------------------------------------------------
 // Mobile local storage repository (T-013)
@@ -12,15 +12,31 @@ import { MANIFEST_FILE, ensureRecordingsDir } from "../utils/constants";
 // so a single-file JSON manifest is adequate for the MVP.
 // ---------------------------------------------------------------------------
 
+export let currentUserId: string | null = null;
+
+/** Set the current interviewer's user ID to scope local storage. */
+export function setStoreUserId(userId: string | null): void {
+  currentUserId = userId;
+}
+
+/** Get the path to the current user's manifest file, falling back to the global one. */
+function getManifestPath(): string {
+  if (!currentUserId) {
+    return MANIFEST_FILE;
+  }
+  return `${FileSystem.documentDirectory}recordings-manifest-${currentUserId}.json`;
+}
+
 /** Read the entire manifest into memory. */
 async function readManifest(): Promise<Recording[]> {
   await ensureRecordingsDir();
-  const info = await FileSystem.getInfoAsync(MANIFEST_FILE);
+  const path = getManifestPath();
+  const info = await FileSystem.getInfoAsync(path);
   if (!info.exists) {
     return [];
   }
   try {
-    const raw = await FileSystem.readAsStringAsync(MANIFEST_FILE);
+    const raw = await FileSystem.readAsStringAsync(path);
     if (!raw.trim()) return [];
     return JSON.parse(raw) as Recording[];
   } catch (err) {
@@ -33,9 +49,10 @@ async function readManifest(): Promise<Recording[]> {
 /** Persist the entire manifest atomically. */
 async function writeManifest(recordings: Recording[]): Promise<void> {
   await ensureRecordingsDir();
+  const path = getManifestPath();
   await FileSystem.writeAsStringAsync(
-    MANIFEST_FILE,
-    JSON.stringify(recordings, null, 2)
+    path,
+    JSON.stringify(recordings, null, 2),
   );
 }
 
@@ -47,8 +64,7 @@ async function writeManifest(recordings: Recording[]): Promise<void> {
 export async function listRecordings(): Promise<Recording[]> {
   const rows = await readManifest();
   return rows.sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }
 
@@ -71,14 +87,11 @@ export async function upsertRecording(recording: Recording): Promise<void> {
 }
 
 /** Update the status of a recording. */
-export async function setStatus(
-  id: string,
-  status: SyncStatus
-): Promise<void> {
+export async function setStatus(id: string, status: SyncStatus): Promise<void> {
   const rows = await readManifest();
   const idx = rows.findIndex((r) => r.id === id);
   if (idx >= 0) {
-  rows[idx].status = status;
+    rows[idx].status = status;
     rows[idx].updatedAt = new Date().toISOString();
     await writeManifest(rows);
   }

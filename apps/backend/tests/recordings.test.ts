@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import type { FastifyInstance } from "fastify";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Set env vars before any module that calls getEnv() is imported.
 process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
@@ -11,7 +11,7 @@ process.env.S3_ENDPOINT = "http://localhost:4566";
 process.env.S3_FORCE_PATH_STYLE = "true";
 process.env.API_PORT = "3000";
 process.env.API_HOST = "0.0.0.0";
-process.env.JWT_SECRET = "test-secret";
+process.env.JWT_SECRET = "test-secret-for-recordings";
 
 // ---------------------------------------------------------------------------
 // Shared mock state (hoisted before module mocks resolve).
@@ -41,10 +41,15 @@ function buildColMap(table: Record<string, unknown>): Record<string, string> {
 function evalCond(
   cond: unknown,
   colMap: Record<string, string>,
-  row: Record<string, unknown>
+  row: Record<string, unknown>,
 ): boolean {
   if (!cond) return true;
-  const c = cond as { kind?: string; name?: string; val?: unknown; conds?: unknown[] };
+  const c = cond as {
+    kind?: string;
+    name?: string;
+    val?: unknown;
+    conds?: unknown[];
+  };
   if (c.kind === "eq") {
     const jsKey = colMap[c.name!];
     return row[jsKey] === c.val;
@@ -55,7 +60,10 @@ function evalCond(
   return true;
 }
 
-function makeSelectChain(table: Record<string, unknown>, store: Record<string, unknown>[]) {
+function makeSelectChain(
+  table: Record<string, unknown>,
+  store: Record<string, unknown>[],
+) {
   const colMap = buildColMap(table);
   const state: {
     conds: unknown[];
@@ -80,11 +88,11 @@ function makeSelectChain(table: Record<string, unknown>, store: Record<string, u
     },
     then: (
       resolve: (rows: Record<string, unknown>[]) => unknown,
-      reject?: (e: unknown) => unknown
+      reject?: (e: unknown) => unknown,
     ) => {
       try {
         let rows = store.filter((r) =>
-          state.conds.every((cond) => evalCond(cond, colMap, r))
+          state.conds.every((cond) => evalCond(cond, colMap, r)),
         );
         if (state.orderDesc) {
           rows = [...rows].sort((a, b) => {
@@ -106,7 +114,7 @@ function makeSelectChain(table: Record<string, unknown>, store: Record<string, u
 function makeInsertChain(
   table: Record<string, unknown>,
   store: Record<string, unknown>[],
-  values: Record<string, unknown>
+  values: Record<string, unknown>,
 ) {
   const colMap = buildColMap(table);
   const jsKeys = Object.values(colMap); // all JS property names for this table
@@ -134,18 +142,22 @@ function makeInsertChain(
     },
     then: (
       resolve: (rows: Record<string, unknown>[]) => unknown,
-      reject?: (e: unknown) => unknown
+      reject?: (e: unknown) => unknown,
     ) => {
       try {
         if (state.conflictTarget) {
           const exists = store.some(
-            (r) => r[state.conflictTarget!] === fullValues[state.conflictTarget!]
+            (r) =>
+              r[state.conflictTarget!] === fullValues[state.conflictTarget!],
           );
           if (exists) return Promise.resolve([]).then(resolve, reject);
         }
         store.push({ ...fullValues });
         const row = { ...fullValues };
-        return Promise.resolve(state.wantReturn ? [row] : []).then(resolve, reject);
+        return Promise.resolve(state.wantReturn ? [row] : []).then(
+          resolve,
+          reject,
+        );
       } catch (e) {
         return Promise.reject(e).then(undefined, reject);
       }
@@ -157,7 +169,7 @@ function makeInsertChain(
 function makeUpdateChain(
   table: Record<string, unknown>,
   store: Record<string, unknown>[],
-  setValues: Record<string, unknown>
+  setValues: Record<string, unknown>,
 ) {
   const colMap = buildColMap(table);
   const state: { conds: unknown[] } = { conds: [] };
@@ -169,7 +181,7 @@ function makeUpdateChain(
     },
     then: (
       resolve: (rows: unknown[]) => unknown,
-      reject?: (e: unknown) => unknown
+      reject?: (e: unknown) => unknown,
     ) => {
       try {
         for (const row of store) {
@@ -189,7 +201,7 @@ function makeUpdateChain(
 function makeDeleteChain(
   table: Record<string, unknown>,
   store: Record<string, unknown>[],
-  conds: unknown[]
+  conds: unknown[],
 ) {
   const colMap = buildColMap(table);
   const chain = {
@@ -199,11 +211,11 @@ function makeDeleteChain(
     },
     then: (
       resolve: (rows: Record<string, unknown>[]) => unknown,
-      reject?: (e: unknown) => unknown
+      reject?: (e: unknown) => unknown,
     ) => {
       try {
         const toDelete = store.filter((r) =>
-          conds.every((c) => evalCond(c, colMap, r))
+          conds.every((c) => evalCond(c, colMap, r)),
         );
         for (const row of toDelete) {
           const idx = store.indexOf(row);
@@ -220,7 +232,7 @@ function makeDeleteChain(
 
 // Route users-table vs recordings-table by checking for an `email` column.
 function storeFor(table: Record<string, unknown>): Record<string, unknown>[] {
-  const isUsers = Object.prototype.hasOwnProperty.call(table, "email");
+  const isUsers = Object.hasOwn(table, "email");
   return isUsers ? shared.users : shared.recordings;
 }
 
@@ -244,7 +256,11 @@ vi.mock("../src/db/index.js", () => ({
 }));
 
 vi.mock("drizzle-orm", () => ({
-  eq: (col: { name: string }, val: unknown) => ({ kind: "eq", name: col.name, val }),
+  eq: (col: { name: string }, val: unknown) => ({
+    kind: "eq",
+    name: col.name,
+    val,
+  }),
   and: (...conds: unknown[]) => ({ kind: "and", conds }),
   desc: (col: { name: string }) => ({ kind: "desc", name: col.name }),
 }));
@@ -266,7 +282,7 @@ vi.mock("../src/services/sync.js", () => ({
       _buffer: Buffer,
       _mimeType: string,
       _filename: string,
-      revertTo: "local" | "failed"
+      revertTo: "local" | "failed",
     ) => {
       if (shared.uploadShouldFail) {
         // Simulate transient S3 failure: revert status then throw.
@@ -281,8 +297,48 @@ vi.mock("../src/services/sync.js", () => ({
         rec.status = "synced";
         rec.s3Key = `recordings/${rec.userId}/${recordingId}/recording.m4a`;
       }
-    }
+    },
   ),
+}));
+
+// ---------------------------------------------------------------------------
+// Mock auth: replace the OIDC authHook with the test-only `x-user-id` seam so
+// the state-machine suite runs without a live Tinyauth/JWKS instance. The
+// real OIDC hook is covered separately in auth.test.ts.
+// ---------------------------------------------------------------------------
+vi.mock("../src/services/auth.js", () => ({
+  authHook: async (
+    req: {
+      url: string;
+      headers: Record<string, string | string[]>;
+      user?: { id: string; email: string };
+    },
+    reply: {
+      status: (c: number) => { send: (b: unknown) => void };
+      send: (b: unknown) => void;
+    },
+  ) => {
+    if (req.url === "/health") return;
+    const raw = req.headers["x-user-id"];
+    const userId = Array.isArray(raw) ? raw[0] : raw;
+    if (!userId) {
+      return reply.status(401).send({
+        error: "Unauthorized",
+        message: "x-user-id header is required",
+        statusCode: 401,
+      });
+    }
+    const found = shared.users.find((u) => u.id === userId);
+    if (!found) {
+      return reply.status(401).send({
+        error: "Unauthorized",
+        message: "Unknown user",
+        statusCode: 401,
+      });
+    }
+    req.user = { id: String(found.id), email: String(found.email) };
+  },
+  seedUsers: vi.fn(async () => {}),
 }));
 
 // ---------------------------------------------------------------------------
@@ -301,7 +357,7 @@ async function buildTestApp(): Promise<FastifyInstance> {
 }
 
 function makeRecording(
-  overrides: Partial<Record<string, unknown>> = {}
+  overrides: Partial<Record<string, unknown>> = {},
 ): Record<string, unknown> {
   return {
     id: crypto.randomUUID(),
@@ -326,7 +382,7 @@ function makeRecording(
 function multipartBody(
   filename: string,
   content: string,
-  mimeType = "audio/mp4"
+  mimeType = "audio/mp4",
 ): { body: string; contentType: string } {
   const boundary = "----TestBoundary12345";
   const body = [
@@ -349,8 +405,12 @@ beforeEach(async () => {
 
   // Seed dev users directly into the mock store (what seedUsers would do).
   shared.users.push(
-    { id: ALICE, email: "alice@example.com", createdAt: new Date().toISOString() },
-    { id: BOB, email: "bob@example.com", createdAt: new Date().toISOString() }
+    {
+      id: ALICE,
+      email: "alice@example.com",
+      createdAt: new Date().toISOString(),
+    },
+    { id: BOB, email: "bob@example.com", createdAt: new Date().toISOString() },
   );
 
   app = await buildTestApp();
@@ -390,8 +450,16 @@ describe("Auth seam (T-005)", () => {
 describe("Per-user scoping (T-005)", () => {
   it("lists only the requesting user's recordings", async () => {
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: ALICE, intervieweeName: "Alice's candidate" }),
-      makeRecording({ id: "r2", userId: BOB, intervieweeName: "Bob's candidate" })
+      makeRecording({
+        id: "r1",
+        userId: ALICE,
+        intervieweeName: "Alice's candidate",
+      }),
+      makeRecording({
+        id: "r2",
+        userId: BOB,
+        intervieweeName: "Bob's candidate",
+      }),
     );
 
     const res = await app.inject({
@@ -407,9 +475,7 @@ describe("Per-user scoping (T-005)", () => {
   });
 
   it("returns 404 when fetching another user's recording (no existence leak)", async () => {
-    shared.recordings.push(
-      makeRecording({ id: "r1", userId: BOB })
-    );
+    shared.recordings.push(makeRecording({ id: "r1", userId: BOB }));
 
     const res = await app.inject({
       method: "GET",
@@ -422,7 +488,12 @@ describe("Per-user scoping (T-005)", () => {
 
   it("returns 404 when deleting another user's recording", async () => {
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: BOB, s3Key: "recordings/bob/r1/rec.m4a", status: "synced" })
+      makeRecording({
+        id: "r1",
+        userId: BOB,
+        s3Key: "recordings/bob/r1/rec.m4a",
+        status: "synced",
+      }),
     );
 
     const res = await app.inject({
@@ -489,7 +560,7 @@ describe("Two-step upload: create (T-006)", () => {
 describe("Two-step upload: audio upload (T-006)", () => {
   it("transitions local -> synced on successful audio upload", async () => {
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: ALICE, status: "local" })
+      makeRecording({ id: "r1", userId: ALICE, status: "local" }),
     );
     const { body, contentType } = multipartBody("rec.m4a", "FAKE_AUDIO");
 
@@ -508,7 +579,7 @@ describe("Two-step upload: audio upload (T-006)", () => {
   it("returns 503 and reverts to local on transient S3 failure", async () => {
     shared.uploadShouldFail = true;
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: ALICE, status: "local" })
+      makeRecording({ id: "r1", userId: ALICE, status: "local" }),
     );
     const { body, contentType } = multipartBody("rec.m4a", "FAKE");
 
@@ -525,7 +596,12 @@ describe("Two-step upload: audio upload (T-006)", () => {
 
   it("returns 409 when uploading audio to an already-synced recording", async () => {
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: ALICE, status: "synced", s3Key: "key" })
+      makeRecording({
+        id: "r1",
+        userId: ALICE,
+        status: "synced",
+        s3Key: "key",
+      }),
     );
     const { body, contentType } = multipartBody("rec.m4a", "FAKE");
 
@@ -541,7 +617,7 @@ describe("Two-step upload: audio upload (T-006)", () => {
 
   it("returns 400 when uploading audio to a failed recording (must use /retry)", async () => {
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: ALICE, status: "failed" })
+      makeRecording({ id: "r1", userId: ALICE, status: "failed" }),
     );
     const { body, contentType } = multipartBody("rec.m4a", "FAKE");
 
@@ -557,7 +633,7 @@ describe("Two-step upload: audio upload (T-006)", () => {
 
   it("returns 404 when uploading audio to another user's recording", async () => {
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: BOB, status: "local" })
+      makeRecording({ id: "r1", userId: BOB, status: "local" }),
     );
     const { body, contentType } = multipartBody("rec.m4a", "FAKE");
 
@@ -575,13 +651,21 @@ describe("Two-step upload: audio upload (T-006)", () => {
 describe("Retry endpoint (T-006)", () => {
   it("returns 400 when retrying a non-failed recording", async () => {
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: ALICE, status: "synced", s3Key: "key" })
+      makeRecording({
+        id: "r1",
+        userId: ALICE,
+        status: "synced",
+        s3Key: "key",
+      }),
     );
 
     const res = await app.inject({
       method: "POST",
       url: "/api/recordings/r1/retry",
-      headers: { "x-user-id": ALICE, "content-type": "multipart/form-data; boundary=x" },
+      headers: {
+        "x-user-id": ALICE,
+        "content-type": "multipart/form-data; boundary=x",
+      },
       payload: "--x--\r\n",
     });
 
@@ -590,7 +674,7 @@ describe("Retry endpoint (T-006)", () => {
 
   it("transitions failed -> synced on successful retry", async () => {
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: ALICE, status: "failed" })
+      makeRecording({ id: "r1", userId: ALICE, status: "failed" }),
     );
     const { body, contentType } = multipartBody("rec.m4a", "FAKE");
 
@@ -608,7 +692,7 @@ describe("Retry endpoint (T-006)", () => {
   it("reverts to failed on transient retry failure", async () => {
     shared.uploadShouldFail = true;
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: ALICE, status: "failed" })
+      makeRecording({ id: "r1", userId: ALICE, status: "failed" }),
     );
     const { body, contentType } = multipartBody("rec.m4a", "FAKE");
 
@@ -633,7 +717,7 @@ describe("Audio download endpoint (T-007)", () => {
         status: "synced",
         s3Key: "recordings/alice/r1/rec.m4a",
         mimeType: "audio/mp4",
-      })
+      }),
     );
 
     const res = await app.inject({
@@ -649,7 +733,7 @@ describe("Audio download endpoint (T-007)", () => {
 
   it("returns 404 for a non-owner", async () => {
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: BOB, status: "synced", s3Key: "key" })
+      makeRecording({ id: "r1", userId: BOB, status: "synced", s3Key: "key" }),
     );
 
     const res = await app.inject({
@@ -663,7 +747,7 @@ describe("Audio download endpoint (T-007)", () => {
 
   it("returns 409 when audio is not yet synced", async () => {
     shared.recordings.push(
-      makeRecording({ id: "r1", userId: ALICE, status: "local" })
+      makeRecording({ id: "r1", userId: ALICE, status: "local" }),
     );
 
     const res = await app.inject({
@@ -684,7 +768,7 @@ describe("Delete endpoint (T-005)", () => {
         userId: ALICE,
         status: "synced",
         s3Key: "recordings/alice/r1/rec.m4a",
-      })
+      }),
     );
 
     const res = await app.inject({
@@ -717,7 +801,9 @@ describe("Error classification (shared types)", () => {
   });
 
   it("exposes the PRD backoff schedule and max attempts", async () => {
-    const { BACKOFF_MS, MAX_ATTEMPTS } = await import("@interview-recorder/shared");
+    const { BACKOFF_MS, MAX_ATTEMPTS } = await import(
+      "@interview-recorder/shared"
+    );
     expect(BACKOFF_MS).toEqual([1000, 2000, 4000, 8000, 16000]);
     expect(MAX_ATTEMPTS).toBe(5);
   });

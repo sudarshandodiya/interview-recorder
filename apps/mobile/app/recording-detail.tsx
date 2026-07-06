@@ -1,22 +1,22 @@
+import type { Recording } from "@interview-recorder/shared";
+import type { Href } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  ScrollView,
   ActivityIndicator,
   Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import type { Href } from "expo-router";
-import type { Recording } from "@interview-recorder/shared";
-import * as localStore from "../src/services/localStore";
-import * as api from "../src/services/api";
-import { onStatusChange } from "../src/services/syncEngine";
 import { StatusBadge } from "../src/components/StatusBadge";
-import { usePlayback, formatTime } from "../src/hooks/usePlayback";
+import { formatTime, usePlayback } from "../src/hooks/usePlayback";
+import * as api from "../src/services/api";
+import * as localStore from "../src/services/localStore";
+import { onStatusChange } from "../src/services/syncEngine";
 
 // ---------------------------------------------------------------------------
 // Recording detail (T-016) + playback (T-018) + metadata edit (T-017).
@@ -50,7 +50,7 @@ export default function RecordingDetailScreen() {
   const [nameErr, setNameErr] = useState(false);
 
   // Playback.
-  const { state: pb, load, play, pause, seek } = usePlayback();
+  const { state: pb, load, play, pause } = usePlayback();
 
   const reload = useCallback(async () => {
     const r = await localStore.getRecording(id);
@@ -137,7 +137,7 @@ export default function RecordingDetailScreen() {
             router.push("/recordings" as Href);
           },
         },
-      ]
+      ],
     );
   }, [rec, router]);
 
@@ -185,7 +185,9 @@ export default function RecordingDetailScreen() {
             <View style={styles.seekRow}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={pb.isPlaying ? "Pause playback" : "Play playback"}
+                accessibilityLabel={
+                  pb.isPlaying ? "Pause playback" : "Play playback"
+                }
                 style={[styles.playBtn, styles.primary]}
                 onPress={() => (pb.isPlaying ? void pause() : void play())}
               >
@@ -215,7 +217,9 @@ export default function RecordingDetailScreen() {
                 autoFocus
               />
               {nameErr && (
-                <Text style={styles.errorText}>Interviewee name is required.</Text>
+                <Text style={styles.errorText}>
+                  Interviewee name is required.
+                </Text>
               )}
             </View>
             <View style={styles.field}>
@@ -329,13 +333,41 @@ const styles = StyleSheet.create({
   container: { padding: 20, backgroundColor: "#f8f9fa", paddingBottom: 40 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   muted: { color: "#6c757d", fontSize: 14 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
-  name: { fontSize: 22, fontWeight: "700", color: "#1a1a2e", flex: 1, marginRight: 8 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  name: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1a1a2e",
+    flex: 1,
+    marginRight: 8,
+  },
   meta: { fontSize: 13, color: "#6c757d", marginBottom: 16 },
-  player: { backgroundColor: "#fff", borderRadius: 12, padding: 16, marginBottom: 20, alignItems: "center" },
-  position: { fontSize: 18, fontWeight: "600", color: "#343a40", marginBottom: 10 },
+  player: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  position: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#343a40",
+    marginBottom: 10,
+  },
   seekRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  playBtn: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
+  playBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   section: { backgroundColor: "#fff", borderRadius: 12, padding: 16 },
   field: { marginBottom: 14 },
   fieldRow: {
@@ -347,15 +379,36 @@ const styles = StyleSheet.create({
   },
   label: { fontSize: 13, fontWeight: "600", color: "#6c757d", width: 100 },
   value: { fontSize: 15, color: "#1a1a2e", flex: 1, textAlign: "right" },
-  input: { backgroundColor: "#f8f9fa", borderWidth: 1, borderColor: "#dee2e6", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
+  input: {
+    backgroundColor: "#f8f9fa",
+    borderWidth: 1,
+    borderColor: "#dee2e6",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
   inputError: { borderColor: "#dc3545" },
   textarea: { minHeight: 96 },
   errorText: { color: "#dc3545", fontSize: 13, marginTop: 4 },
   row: { flexDirection: "row", gap: 10, marginTop: 8 },
-  control: { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 10, alignItems: "center" },
+  control: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
   primary: { backgroundColor: "#0b5ed7" },
-  secondary: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#0b5ed7" },
-  ghost: { backgroundColor: "transparent", borderWidth: 1, borderColor: "#dee2e6" },
+  secondary: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#0b5ed7",
+  },
+  ghost: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#dee2e6",
+  },
   danger: { backgroundColor: "#dc3545" },
   controlTextLight: { color: "#fff", fontWeight: "600", fontSize: 15 },
   controlTextDark: { color: "#0b5ed7", fontWeight: "600", fontSize: 15 },

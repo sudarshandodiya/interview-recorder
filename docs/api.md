@@ -8,17 +8,17 @@ http://localhost:3000
 
 ## Authentication
 
-Stub auth seam (per PRD §7 "Known Limitation"). Every `/api/*` endpoint
-requires an `x-user-id` header identifying the interviewer. Two dev users
-are seeded on startup:
+Username/password (Tinyauth over HTTP). The mobile app posts credentials to
+`POST /api/auth/login`; the backend validates them against Tinyauth's
+forward-auth endpoint and returns a 24h HS256 **session JWT** (signed with
+`JWT_SECRET`). Send that token as `Authorization: Bearer <token>` on every
+`/api/*` request. The backend verifies `iss`/`aud`/`exp`, upserts the user by
+the Tinyauth username, and scopes every recording query by `req.user.id`.
+Requests without a valid token receive `401`. `/health` and
+`POST /api/auth/login` are exempt. See [auth.md](auth.md) for the full flow.
 
-| User ID | Email |
-|---------|-------|
-| `00000000-0000-0000-0000-000000000001` | alice@example.com |
-| `00000000-0000-0000-0000-000000000002` | bob@example.com |
-
-Requests without the header (or with an unknown user) receive `401`.
-The `/health` endpoint is exempt.
+Three dummy accounts are seeded in `docker-compose.yml`:
+`interviewer1`/`pass1`, `interviewer2`/`pass2`, `interviewer3`/`pass3`.
 
 ---
 
@@ -49,11 +49,50 @@ Health check (no auth required).
 
 ---
 
+### `POST /api/auth/login`
+
+Exchange interviewer credentials (validated by Tinyauth) for a session JWT.
+No bearer token required.
+
+**Headers:** `Content-Type: application/json`
+
+**Body:**
+```json
+{ "username": "interviewer1", "password": "pass1" }
+```
+
+**Response** `200 OK`
+```json
+{
+  "data": {
+    "token": "<jwt>",
+    "user": { "id": "...", "username": "interviewer1", "email": "...", "name": "..." }
+  }
+}
+```
+
+`401` on bad credentials, `400` if `username`/`password` are missing.
+
+---
+
+### `GET /api/auth/me`
+
+Return the caller's user (requires a valid bearer token).
+
+**Headers:** `Authorization: Bearer <jwt>`
+
+**Response** `200 OK`
+```json
+{ "data": { "id": "...", "email": "..." } }
+```
+
+---
+
 ### `GET /api/recordings`
 
 List all recordings owned by the authenticated user, newest first.
 
-**Headers:** `x-user-id: <uuid>`
+**Headers:** `Authorization: Bearer <id_token>`
 
 **Response** `200 OK`
 ```json
@@ -86,7 +125,7 @@ List all recordings owned by the authenticated user, newest first.
 Fetch a single recording by ID (owner-only; returns 404 for non-owned
 recordings to avoid leaking existence).
 
-**Headers:** `x-user-id: <uuid>`
+**Headers:** `Authorization: Bearer <id_token>`
 
 **Response** `200 OK`
 ```json
@@ -105,7 +144,7 @@ recordings to avoid leaking existence).
 Create a metadata-only recording with status `local`. No audio file is
 sent in this step.
 
-**Headers:** `x-user-id: <uuid>`, `Content-Type: application/json`
+**Headers:** `Authorization: Bearer <id_token>`, `Content-Type: application/json`
 
 **Body:**
 ```json
@@ -143,7 +182,7 @@ sent in this step.
 Upload the audio file for a recording created in Step 1. Transitions the
 recording from `local` → `uploading` → `synced` (or `failed`).
 
-**Headers:** `x-user-id: <uuid>`, `Content-Type: multipart/form-data`
+**Headers:** `Authorization: Bearer <id_token>`, `Content-Type: multipart/form-data`
 
 **Body:** `multipart/form-data` with a `file` field containing the audio.
 
@@ -166,7 +205,7 @@ recording from `local` → `uploading` → `synced` (or `failed`).
 
 Re-attempt the audio upload for a recording whose status is `failed`.
 
-**Headers:** `x-user-id: <uuid>`, `Content-Type: multipart/form-data`
+**Headers:** `Authorization: Bearer <id_token>`, `Content-Type: multipart/form-data`
 
 **Body:** `multipart/form-data` with a `file` field containing the audio.
 
@@ -189,7 +228,7 @@ Re-attempt the audio upload for a recording whose status is `failed`.
 Get a short-lived pre-signed URL for downloading the audio file
 (owner-only, only available for `synced` recordings).
 
-**Headers:** `x-user-id: <uuid>`
+**Headers:** `Authorization: Bearer <id_token>`
 
 **Response** `200 OK`
 ```json
@@ -208,7 +247,7 @@ Get a short-lived pre-signed URL for downloading the audio file
 
 Delete a recording and its associated S3 audio file (owner-only).
 
-**Headers:** `x-user-id: <uuid>`
+**Headers:** `Authorization: Bearer <id_token>`
 
 **Response** `200 OK`
 ```json

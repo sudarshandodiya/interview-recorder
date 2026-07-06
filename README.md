@@ -84,6 +84,17 @@ mise run db:up
 
 Starts PostgreSQL (port 5432) and LocalStack S3 (port 4566).
 
+For authentication, also start Tinyauth (HTTP credential store):
+
+```bash
+mise run auth:up
+```
+
+Three dummy accounts (`interviewer1`/`pass1`, `interviewer2`/`pass2`,
+`interviewer3`/`pass3`) are seeded automatically via `TINYAUTH_AUTH_USERS` in
+`docker-compose.yml`, so login works zero-config. See
+[docs/auth.md](docs/auth.md).
+
 ### 5. Run database migrations
 
 ```bash
@@ -116,6 +127,8 @@ Run `mise tasks` to list all available tasks.
 | `db:down` | Stop Docker services |
 | `db:migrate` | Push Drizzle schema to DB |
 | `db:studio` | Open Drizzle Studio (DB browser) |
+| `auth:up` | Start Tinyauth (HTTP credential store) |
+| `auth:down` | Stop Tinyauth |
 | `clean` | Remove all build artifacts |
 
 ## API Documentation
@@ -194,12 +207,15 @@ future scope (see §Potential Improvements).
 
 The following resolve the PRD §11 open questions for the MVP deliverable:
 
-- **Auth stub depth:** Per-interviewer stub via an `x-user-id` request
-  header that resolves to a seeded dev user (a couple of dev users are
-  seeded for testing). Swappable for a real provider (magic link / OIDC)
-  later — the per-user scoping seam is real. The PRD's *product
-  requirement* of real per-user auth remains; the stub is a **Known
-  Limitation** of this 2-day deliverable, not the spec.
+- **Auth:** Username/password backed by [Tinyauth](https://github.com/tinyauthapp/tinyauth),
+  running over **plain HTTP** (no HTTPS/Caddy/`/etc/hosts`/certs — only
+  Tinyauth's OIDC *server* mode needs HTTPS; we use forward-auth/Basic auth).
+  The mobile posts credentials to `POST /api/auth/login`; the backend
+  validates them against Tinyauth, issues a 24h HS256 session JWT, and the
+  mobile sends it as `Authorization: Bearer` on every API call. Three dummy
+  accounts (`interviewer1/pass1`, `interviewer2/pass2`, `interviewer3/pass3`)
+  are seeded via `TINYAUTH_AUTH_USERS` so login works zero-config. The previous
+  `x-user-id` stub is removed from production. See [docs/auth.md](docs/auth.md).
 - **Audio format & quality:** AAC in an `.m4a` container, mono, 44.1 kHz,
   ~96 kbps — a voice-suitable balance of fidelity and upload size over
   flaky networks (uses `expo-av` defaults).
@@ -227,14 +243,18 @@ exercised through these flows.
 | 1 | **Crash mid-record** (capture durability) | 1. `mise run dev:mobile`, start a new recording. 2. From the OS, force-quit the Expo app while recording. 3. Reopen the app. | The interrupted session appears in `My Recordings` with status `Local` and recoverable partial audio (plays back in detail). |
 | 2 | **Kill mid-upload** (sync integrity) | 1. Record + save a session; ensure backend is running and network up. 2. While status shows `Uploading…`, force-quit the Expo app. 3. Reopen the app. | Status resets to `Local` on relaunch (no stuck `Uploading`), the sync engine requeues, and the recording reaches `Synced`. |
 | 3 | **Offline → online** (backoff retries) | 1. Stop the backend (`mise run db:down` or kill the API process). 2. Record + save a session; observe it stays `Local` and retries with backoff (1s→2s→4s→8s→16s). 3. Restart the backend. | The recording auto-syncs to `Synced` within ~30 s of backend availability. |
-| 4 | **Non-transient → terminal `failed` → manual retry** | 1. Mock a non-transient failure (e.g., revoke auth by changing `EXPO_PUBLIC_USER_ID` to an unknown UUID). 2. Record + save; observe it transitions to `failed` after 5 attempts. 3. Restore the valid user id and tap `Retry` in `My Recordings`. | Status is terminal `failed`; manual `Retry` re-sends the audio and reaches `Synced`. |
+| 4 | **Non-transient → terminal `failed` → manual retry** | 1. Mock a non-transient failure (e.g., revoke auth by signing out so the stored id token is gone). 2. Record + save; observe it transitions to `failed` after 5 attempts. 3. Sign back in and tap `Retry` in `My Recordings`. | Status is terminal `failed`; manual `Retry` re-sends the audio and reaches `Synced`. |
 
 Run `mise run test:backend` to execute the 24 unit tests backing the state
 machine and per-user scoping.
 
 ## Known Limitations
 
-- **Authentication**: Placeholder only — no real auth is implemented.
+- **Authentication (HTTP in local dev):** Real username/password auth is
+  implemented via Tinyauth, but local dev runs over plain HTTP on `localhost`.
+  For any non-local deployment, terminate TLS in front of the backend and
+  Tinyauth. Dummy passwords (`pass1/2/3`) are dev-only. See
+  [docs/auth.md](docs/auth.md).
 - **Background uploads**: The mobile sync engine runs while the app is
   foregrounded. True background-task uploads (iOS background tasks / Android
   foreground services) and a server-side job queue (BullMQ + Redis) are
@@ -248,15 +268,11 @@ machine and per-user scoping.
   against both LocalStack (dev) and real S3. (Earlier drafts returned a
   placeholder URL; that limitation is resolved.)
 
-- **Authentication**: Per-interviewer stub via `x-user-id` request header
-  resolved against seeded dev users. The per-user scoping seam is real, but
-  the deliverable does not implement a real auth provider (magic link / OIDC).
-  This is a **Known Limitation**, not the product spec — see Decisions above.
-
 ## Potential Improvements
 
 - Add EAS Build config for iOS/Android distribution
-- Implement proper auth (Supabase Auth, Clerk, or custom JWT)
+- TLS-terminate the backend + Tinyauth for non-local deployments
+- Strong Tinyauth credentials (LDAP/OIDC) instead of seeded dummy passwords
 - Job queue (BullMQ + Redis) for reliable background uploads
 - Add file integrity validation (checksums, resumable uploads)
 - Offline-first mobile with local SQLite (e.g., WatermelonDB)

@@ -1,11 +1,11 @@
 import type { Recording, SyncStatus } from "@interview-recorder/shared";
 import {
   BACKOFF_MS,
-  MAX_ATTEMPTS,
   classifyError,
+  MAX_ATTEMPTS,
 } from "@interview-recorder/shared";
-import * as localStore from "./localStore";
 import * as api from "./api";
+import * as localStore from "./localStore";
 
 // ---------------------------------------------------------------------------
 // Mobile sync engine (T-015) — the second reliability pillar.
@@ -55,14 +55,17 @@ function cancelTimer(id: string): void {
 }
 
 /** Attempt up to MAX_ATTEMPTS uploads of a recording with backoff. */
-async function attemptUpload(id: string, fromStatus: SyncStatus): Promise<void> {
+async function attemptUpload(
+  id: string,
+  fromStatus: SyncStatus,
+): Promise<void> {
   const rec = await localStore.getRecording(id);
-  if (!rec || !rec.localUri) {
+  if (!rec?.localUri) {
     notify(id, "failed");
     return;
   }
 
-  retryLoop: for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       // Mark uploading.
       await localStore.setStatus(id, "uploading");
@@ -130,7 +133,10 @@ async function attemptUpload(id: string, fromStatus: SyncStatus): Promise<void> 
 
       // Revert to `local` (or leave as the originating `failed` status) and
       // schedule the next attempt after backoff.
-      await localStore.setStatus(id, fromStatus === "failed" ? "local" : "local");
+      await localStore.setStatus(
+        id,
+        fromStatus === "failed" ? "local" : "local",
+      );
       notify(id, "local");
 
       const delay = BACKOFF_MS[attempt - 1] ?? 16000;
@@ -138,8 +144,6 @@ async function attemptUpload(id: string, fromStatus: SyncStatus): Promise<void> 
         const t = setTimeout(resolve, delay);
         inflight.set(id, t);
       });
-      // loop continues to retryLoop
-      continue retryLoop;
     }
   }
 }

@@ -1,21 +1,21 @@
+import type { Recording } from "@interview-recorder/shared";
+import type { Href } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  FlatList,
-  RefreshControl,
   Alert,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import type { Href } from "expo-router";
-import type { Recording } from "@interview-recorder/shared";
-import * as localStore from "../src/services/localStore";
-import * as api from "../src/services/api";
-import { onStatusChange, manualRetry } from "../src/services/syncEngine";
-import { formatTime } from "../src/hooks/usePlayback";
 import { StatusBadge } from "../src/components/StatusBadge";
+import { formatTime } from "../src/hooks/usePlayback";
+import * as api from "../src/services/api";
+import * as localStore from "../src/services/localStore";
+import { manualRetry, onStatusChange } from "../src/services/syncEngine";
 
 // ---------------------------------------------------------------------------
 // Recordings list (T-014) — manage past recordings: delete, retry (failed),
@@ -38,8 +38,10 @@ export default function RecordingsScreen() {
       // Optimistically patch the row's status; full reload is cheap too.
       setRows((prev) =>
         prev.map((r) =>
-          r.id === id ? { ...r, status, updatedAt: new Date().toISOString() } : r
-        )
+          r.id === id
+            ? { ...r, status, updatedAt: new Date().toISOString() }
+            : r,
+        ),
       );
     });
     return unsub;
@@ -73,10 +75,10 @@ export default function RecordingsScreen() {
               await reload();
             },
           },
-        ]
+        ],
       );
     },
-    [reload]
+    [reload],
   );
 
   const onRetry = useCallback(
@@ -84,7 +86,7 @@ export default function RecordingsScreen() {
       await manualRetry(rec.id);
       await reload();
     },
-    [reload]
+    [reload],
   );
 
   return (
@@ -173,7 +175,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 4,
   },
-  name: { fontSize: 16, fontWeight: "600", color: "#1a1a2e", flex: 1, marginRight: 8 },
+  name: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1a1a2e",
+    flex: 1,
+    marginRight: 8,
+  },
   meta: { fontSize: 13, color: "#6c757d" },
   rowActions: { flexDirection: "row", gap: 8 },
   mini: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
@@ -182,6 +190,11 @@ const styles = StyleSheet.create({
   miniTextLight: { color: "#fff", fontWeight: "600", fontSize: 13 },
   empty: { flex: 1 },
   emptyWrap: { alignItems: "center", justifyContent: "center", padding: 32 },
-  emptyTitle: { fontSize: 18, fontWeight: "600", color: "#343a40", marginBottom: 6 },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#343a40",
+    marginBottom: 6,
+  },
   emptyText: { fontSize: 14, color: "#6c757d", textAlign: "center" },
 });
