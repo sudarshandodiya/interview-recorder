@@ -294,6 +294,11 @@ machine and per-user scoping.
 
 ### TBD: Maestro E2E configuration
 
+> **⚠️ Maestro is not functional yet.** The flows are written but `maestro:test` hangs
+> because the app must be pre-built and installed on a simulator first
+> (`maestro:install`), and the full recording flows need the backend + Tinyauth
+> running. See `docs/e2e.md` for the complete task list to make E2E tests work.
+
 - [ ] Run `maestro:install` once to build the iOS app on the simulator
 - [ ] Add `testID` props to key UI elements for reliable Maestro selectors
 - [ ] Create an `.eas/workflows/e2e-test-ios.yml` for iOS CI testing

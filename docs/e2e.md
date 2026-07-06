@@ -1,5 +1,11 @@
 # E2E Testing (Maestro)
 
+> **⚠️ Maestro is not functional yet.** The flows are written and `maestro:test`
+> is wired in mise, but the app must be pre-built and installed on a simulator
+> first (`maestro:install`), and the full recording flows need the backend +
+> Tinyauth running. The checklist below covers everything that needs to happen
+> before `maestro:test` works end-to-end.
+
 E2E tests run on a booted iOS simulator (or Android emulator) using
 [Maestro](https://maestro.mobile.dev).
 
