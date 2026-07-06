@@ -1,4 +1,5 @@
 [tools]
+maestro = "cli-2.6.0"
 node = "22"
 pnpm = "9"
 
@@ -115,7 +116,12 @@ run = "docker compose down"
 
 # --- Maestro E2E tests ---
 # Requires the full stack + the app installed on a simulator.
-#   mise run stack:up && mise run dev:backend && mise run maestro:test
+#   mise run stack:up && mise run dev:backend && mise run maestro:install && mise run maestro:test
+[tasks."maestro:install"]
+description = "Build and install the Expo app on the booted iOS simulator"
+dir = "apps/mobile"
+run = "npx expo run:ios --no-build-cache"
+
 [tasks."maestro:test"]
 description = "Run all Maestro E2E flows (.maestro/*.yaml)"
 run = "maestro test .maestro/"
