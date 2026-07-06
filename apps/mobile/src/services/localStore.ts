@@ -125,6 +125,28 @@ export async function removeRecording(id: string): Promise<void> {
   await writeManifest(rows);
 }
 
+/**
+ * Delete the local audio file for a recording but keep the metadata row
+ * (status stays "synced", playback falls back to S3 streaming). No-op if
+ * the recording doesn't exist or has no localUri.
+ */
+export async function clearLocalAudio(id: string): Promise<void> {
+  const rows = await readManifest();
+  const idx = rows.findIndex((r) => r.id === id);
+  if (idx < 0 || !rows[idx].localUri) return;
+
+  try {
+    const info = await FileSystem.getInfoAsync(rows[idx].localUri);
+    if (info.exists) {
+      await FileSystem.deleteAsync(rows[idx].localUri, { idempotent: true });
+    }
+  } catch (err) {
+    console.warn("[localStore] failed to clear local audio:", err);
+  }
+  rows[idx].localUri = undefined;
+  await writeManifest(rows);
+}
+
 /** Count recordings. */
 export async function countRecordings(): Promise<number> {
   const rows = await readManifest();

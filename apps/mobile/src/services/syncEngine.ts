@@ -173,6 +173,31 @@ export async function manualRetry(id: string): Promise<void> {
 }
 
 /**
+ * One-shot manual sync for a recording in `local` or `failed` status.
+ * Attempts the upload with full backoff, and on success deletes the local
+ * audio file (keeping the metadata row so the list entry remains). The
+ * recording stays visible with status "synced"; playback falls back to
+ * streaming from S3.
+ */
+export async function syncAndClearLocal(id: string): Promise<void> {
+  const rec = await localStore.getRecording(id);
+  if (!rec) return;
+  const fromStatus =
+    rec.status === "failed" ? "failed" : "local";
+
+  cancelTimer(id);
+  await localStore.setStatus(id, "uploading");
+  notify(id, "uploading");
+  await attemptUpload(id, fromStatus);
+
+  // If the upload succeeded (status is now synced), clean up the local file.
+  const updated = await localStore.getRecording(id);
+  if (updated?.status === "synced" && updated.localUri) {
+    await localStore.clearLocalAudio(id);
+  }
+}
+
+/**
  * Upload any recordings in `local` status. Called on app launch and on
  * network-restoration signals. Safe to call repeatedly.
  */

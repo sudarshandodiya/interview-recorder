@@ -15,7 +15,7 @@ import { StatusBadge } from "../src/components/StatusBadge";
 import { formatTime } from "../src/hooks/usePlayback";
 import * as api from "../src/services/api";
 import * as localStore from "../src/services/localStore";
-import { manualRetry, onStatusChange } from "../src/services/syncEngine";
+import { manualRetry, onStatusChange, syncAndClearLocal } from "../src/services/syncEngine";
 
 // ---------------------------------------------------------------------------
 // Recordings list (T-014) — manage past recordings: delete, retry (failed),
@@ -89,6 +89,14 @@ export default function RecordingsScreen() {
     [reload],
   );
 
+  const onSync = useCallback(
+    async (rec: Recording) => {
+      await syncAndClearLocal(rec.id);
+      await reload();
+    },
+    [reload],
+  );
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -133,6 +141,16 @@ export default function RecordingsScreen() {
                   onPress={() => void onRetry(item)}
                 >
                   <Text style={styles.miniTextLight}>Retry</Text>
+                </Pressable>
+              )}
+              {(item.status === "local" || item.status === "failed") && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Sync recording"
+                  style={[styles.mini, styles.miniSync]}
+                  onPress={() => void onSync(item)}
+                >
+                  <Text style={styles.miniTextLight}>Sync</Text>
                 </Pressable>
               )}
               <Pressable
@@ -189,6 +207,7 @@ const styles = StyleSheet.create({
   mini: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   miniPrimary: { backgroundColor: "#0b5ed7" },
   miniDanger: { backgroundColor: "#dc3545" },
+  miniSync: { backgroundColor: "#198754" },
   miniTextLight: { color: "#fff", fontWeight: "600", fontSize: 13 },
   empty: { flex: 1 },
   emptyWrap: { alignItems: "center", justifyContent: "center", padding: 32 },
