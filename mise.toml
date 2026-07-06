@@ -103,6 +103,16 @@ run = "docker compose up -d tinyauth"
 description = "Stop Tinyauth"
 run = "docker compose down tinyauth"
 
+# --- Full development stack ---
+[tasks."stack:up"]
+description = "Start the full dev stack (PostgreSQL, LocalStack, Tinyauth)"
+depends = ["db:up", "auth:up"]
+run = "echo 'Stack is up. Run `mise run dev:backend` and `mise run dev:mobile` in separate terminals.'"
+
+[tasks."stack:down"]
+description = "Stop the entire dev stack"
+run = "docker compose down"
+
 # --- Deepsec (AI-powered vulnerability scanner) ---
 [tasks.deepsec]
 description = "Run deepsec commands (AI vulnerability scanner) with deepseek-v4-flash"
