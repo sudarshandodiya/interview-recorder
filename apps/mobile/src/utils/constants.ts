@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import * as FileSystem from "expo-file-system";
 
 /**
@@ -24,11 +25,22 @@ export const MANIFEST_FILE = `${FileSystem.documentDirectory}recordings-manifest
  */
 export const SESSION_SUFFIX = ".session.json";
 
-/** MIME type for the chosen audio format (AAC in m4a container). */
-export const AUDIO_MIME_TYPE = "audio/mp4";
+/**
+ * MIME type for audio recordings.
+ *
+ * iOS: WAV (LINEARPCM) — crash-safe. Headers are at the start of the file, so
+ * even a force-killed recording is playable on recovery.
+ *
+ * Android: AAC in MP4 container — accepted risk that a truncated file from a
+ * crash is unplayable (moov atom is written at the end). The friendly error
+ * message in the detail screen covers this.
+ */
+export const AUDIO_MIME_TYPE =
+  Platform.OS === "ios" ? "audio/wav" : "audio/mp4";
 
-/** File extension for recordings. */
-export const AUDIO_EXTENSION = ".m4a";
+/** File extension for recordings (`.wav` on iOS, `.m4a` on Android). */
+export const AUDIO_EXTENSION =
+  Platform.OS === "ios" ? ".wav" : ".m4a";
 
 /** Ensure the recordings directory exists. Safe to call multiple times. */
 export async function ensureRecordingsDir(): Promise<void> {

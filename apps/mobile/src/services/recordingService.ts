@@ -52,12 +52,16 @@ const VOICE_RECORDING_OPTIONS: RecordingOptions = {
     bitRate: 96000,
   },
   ios: {
-    extension: AUDIO_EXTENSION,
-    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-    audioQuality: Audio.IOSAudioQuality.MEDIUM,
+    // WAV (LINEARPCM) writes headers at the start of the file, so even a
+    // force-killed recording is playable. AAC/MP4 is smaller but requires
+    // stopAndUnloadAsync() to finalize the container — a crash leaves the
+    // file unplayable (missing moov atom).
+    extension: ".wav",
+    outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+    audioQuality: Audio.IOSAudioQuality.MAX,
     sampleRate: 44100,
     numberOfChannels: 1,
-    bitRate: 96000,
+    bitRate: 705600, // 44.1k × 1 channel × 16 bit
     linearPCMBitDepth: 16,
     linearPCMIsBigEndian: false,
     linearPCMIsFloat: false,

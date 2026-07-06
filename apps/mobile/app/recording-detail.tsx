@@ -176,7 +176,11 @@ export default function RecordingDetailScreen() {
         {pb.isLoading ? (
           <ActivityIndicator />
         ) : pb.error ? (
-          <Text style={styles.muted}>Cannot play: {pb.error}</Text>
+          <Text style={styles.muted}>
+            {rec.notes?.includes("recovered")
+              ? "This recording was recovered after a crash. The audio may be incomplete."
+              : `Cannot play: ${pb.error}`}
+          </Text>
         ) : (
           <>
             <Text style={styles.position}>
