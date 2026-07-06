@@ -15,7 +15,7 @@ forward-auth endpoint and returns a 24h HS256 **session JWT** (signed with
 `/api/*` request. The backend verifies `iss`/`aud`/`exp`, upserts the user by
 the Tinyauth username, and scopes every recording query by `req.user.id`.
 Requests without a valid token receive `401`. `/health` and
-`POST /api/auth/login` are exempt. See [auth.md](auth.md) for the full flow.
+`POST /api/auth/login` are exempt. See [auth.md](auth.md#backend-behavior) for the full flow.
 
 Three dummy accounts are seeded in `docker-compose.yml`:
 `interviewer1`/`pass1`, `interviewer2`/`pass2`, `interviewer3`/`pass3`.

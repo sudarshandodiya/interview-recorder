@@ -95,7 +95,7 @@ mise run auth:up
 Three dummy accounts (`interviewer1`/`pass1`, `interviewer2`/`pass2`,
 `interviewer3`/`pass3`) are seeded automatically via `TINYAUTH_AUTH_USERS` in
 `docker-compose.yml`, so login works zero-config. See
-[docs/auth.md](docs/auth.md).
+[docs/auth.md](docs/auth.md#dummy-accounts-zero-config).
 
 ### 5. Run database migrations
 
@@ -223,7 +223,7 @@ The following resolve the PRD §11 open questions for the MVP deliverable:
   mobile sends it as `Authorization: Bearer` on every API call. Three dummy
   accounts (`interviewer1/pass1`, `interviewer2/pass2`, `interviewer3/pass3`)
   are seeded via `TINYAUTH_AUTH_USERS` so login works zero-config. The previous
-  `x-user-id` stub is removed from production. See [docs/auth.md](docs/auth.md).
+  `x-user-id` stub is removed from production. See [docs/auth.md](docs/auth.md#why-this-shape).
 - **Audio format & quality:** AAC in an `.m4a` container, mono, 44.1 kHz,
   ~96 kbps — a voice-suitable balance of fidelity and upload size over
   flaky networks (uses `expo-av` defaults).
@@ -262,7 +262,7 @@ machine and per-user scoping.
   implemented via Tinyauth, but local dev runs over plain HTTP on `localhost`.
   For any non-local deployment, terminate TLS in front of the backend and
   Tinyauth. Dummy passwords (`pass1/2/3`) are dev-only. See
-  [docs/auth.md](docs/auth.md).
+  [docs/auth.md](docs/auth.md#security-notes--limitations).
 - **Background uploads**: The mobile sync engine runs while the app is
   foregrounded. True background-task uploads (iOS background tasks / Android
   foreground services) and a server-side job queue (BullMQ + Redis) are
