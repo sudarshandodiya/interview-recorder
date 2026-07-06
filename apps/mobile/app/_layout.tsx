@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
-import { performAppLaunchRecovery } from "../src/services/durability.js";
-import { initSyncEngine } from "../src/services/syncEngine.js";
+import { performAppLaunchRecovery } from "../src/services/durability";
+import { initSyncEngine } from "../src/services/syncEngine";
 
 /**
  * Root layout.

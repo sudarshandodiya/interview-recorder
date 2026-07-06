@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import type { Href } from "expo-router";
 import { useEffect, useState } from "react";
-import * as localStore from "../src/services/localStore.js";
+import * as localStore from "../src/services/localStore";
 
 // ---------------------------------------------------------------------------
 // Home screen — entry point. Two actions: start a new recording, or browse

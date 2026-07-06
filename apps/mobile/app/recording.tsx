@@ -11,12 +11,12 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import type { Href } from "expo-router";
-import { useRecording } from "../src/hooks/useRecording.js";
-import { Waveform } from "../src/components/Waveform.js";
-import { upsertRecording } from "../src/services/localStore.js";
-import { enqueueUpload } from "../src/services/syncEngine.js";
-import { AUDIO_MIME_TYPE } from "../src/utils/constants.js";
-import { formatTime } from "../src/hooks/usePlayback.js";
+import { useRecording } from "../src/hooks/useRecording";
+import { Waveform } from "../src/components/Waveform";
+import { upsertRecording } from "../src/services/localStore";
+import { enqueueUpload } from "../src/services/syncEngine";
+import { AUDIO_MIME_TYPE } from "../src/utils/constants";
+import { formatTime } from "../src/hooks/usePlayback";
 import type { Recording } from "@interview-recorder/shared";
 
 // ---------------------------------------------------------------------------

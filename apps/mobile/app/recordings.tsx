@@ -11,11 +11,11 @@ import {
 import { useRouter } from "expo-router";
 import type { Href } from "expo-router";
 import type { Recording } from "@interview-recorder/shared";
-import * as localStore from "../src/services/localStore.js";
-import * as api from "../src/services/api.js";
-import { onStatusChange, manualRetry } from "../src/services/syncEngine.js";
-import { formatTime } from "../src/hooks/usePlayback.js";
-import { StatusBadge } from "../src/components/StatusBadge.js";
+import * as localStore from "../src/services/localStore";
+import * as api from "../src/services/api";
+import { onStatusChange, manualRetry } from "../src/services/syncEngine";
+import { formatTime } from "../src/hooks/usePlayback";
+import { StatusBadge } from "../src/components/StatusBadge";
 
 // ---------------------------------------------------------------------------
 // Recordings list (T-014) — manage past recordings: delete, retry (failed),

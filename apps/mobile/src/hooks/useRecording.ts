@@ -4,9 +4,9 @@ import {
   recordingService,
   type RecordingState,
   type RecordingStatusUpdate,
-} from "../services/recordingService.js";
-import { upsertRecording } from "../services/localStore.js";
-import { AUDIO_MIME_TYPE } from "../utils/constants.js";
+} from "../services/recordingService";
+import { upsertRecording } from "../services/localStore";
+import { AUDIO_MIME_TYPE } from "../utils/constants";
 
 // ---------------------------------------------------------------------------
 // useRecording hook (T-010)

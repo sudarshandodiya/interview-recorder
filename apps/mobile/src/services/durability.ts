@@ -6,9 +6,9 @@ import {
   AUDIO_EXTENSION,
   AUDIO_MIME_TYPE,
   ensureRecordingsDir,
-} from "../utils/constants.js";
-import type { SessionManifest } from "./recordingService.js";
-import { upsertRecording, getRecording } from "./localStore.js";
+} from "../utils/constants";
+import type { SessionManifest } from "./recordingService";
+import { upsertRecording, getRecording } from "./localStore";
 
 // ---------------------------------------------------------------------------
 // Capture durability — crash recovery (T-012)
@@ -139,7 +139,7 @@ export async function performAppLaunchRecovery(): Promise<{
   stuckUploadsReset: number;
 }> {
   const recovered = await recoverInterruptedSessions();
-  const { resetStuckUploading } = await import("./localStore.js");
+  const { resetStuckUploading } = await import("./localStore");
   const stuckUploadsReset = await resetStuckUploading();
   return { recovered, stuckUploadsReset };
 }

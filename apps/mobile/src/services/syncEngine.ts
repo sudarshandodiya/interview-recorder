@@ -4,8 +4,8 @@ import {
   MAX_ATTEMPTS,
   classifyError,
 } from "@interview-recorder/shared";
-import * as localStore from "./localStore.js";
-import * as api from "./api.js";
+import * as localStore from "./localStore";
+import * as api from "./api";
 
 // ---------------------------------------------------------------------------
 // Mobile sync engine (T-015) — the second reliability pillar.

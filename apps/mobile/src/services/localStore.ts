@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system";
 import type { Recording, SyncStatus } from "@interview-recorder/shared";
-import { MANIFEST_FILE, ensureRecordingsDir } from "../utils/constants.js";
+import { MANIFEST_FILE, ensureRecordingsDir } from "../utils/constants";
 
 // ---------------------------------------------------------------------------
 // Mobile local storage repository (T-013)

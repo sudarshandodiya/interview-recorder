@@ -7,7 +7,7 @@ import {
   AUDIO_EXTENSION,
   ensureRecordingsDir,
   generateId,
-} from "../utils/constants.js";
+} from "../utils/constants";
 import { InterruptionModeIOS, InterruptionModeAndroid } from "expo-av";
 
 // ---------------------------------------------------------------------------

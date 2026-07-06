@@ -12,11 +12,11 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { Href } from "expo-router";
 import type { Recording } from "@interview-recorder/shared";
-import * as localStore from "../src/services/localStore.js";
-import * as api from "../src/services/api.js";
-import { onStatusChange } from "../src/services/syncEngine.js";
-import { StatusBadge } from "../src/components/StatusBadge.js";
-import { usePlayback, formatTime } from "../src/hooks/usePlayback.js";
+import * as localStore from "../src/services/localStore";
+import * as api from "../src/services/api";
+import { onStatusChange } from "../src/services/syncEngine";
+import { StatusBadge } from "../src/components/StatusBadge";
+import { usePlayback, formatTime } from "../src/hooks/usePlayback";
 
 // ---------------------------------------------------------------------------
 // Recording detail (T-016) + playback (T-018) + metadata edit (T-017).
