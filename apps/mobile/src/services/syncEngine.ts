@@ -182,8 +182,7 @@ export async function manualRetry(id: string): Promise<void> {
 export async function syncAndClearLocal(id: string): Promise<void> {
   const rec = await localStore.getRecording(id);
   if (!rec) return;
-  const fromStatus =
-    rec.status === "failed" ? "failed" : "local";
+  const fromStatus = rec.status === "failed" ? "failed" : "local";
 
   cancelTimer(id);
   await localStore.setStatus(id, "uploading");

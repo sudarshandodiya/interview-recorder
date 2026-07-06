@@ -216,9 +216,7 @@ export class RecordingService {
     // Fall back to wall-clock elapsed so the UI never shows 0:00.
     const elapsedMs = Date.now() - this.startTimestamp;
     const durationMs =
-      (status.durationMillis ?? 0) > 0
-        ? status.durationMillis!
-        : elapsedMs;
+      (status.durationMillis ?? 0) > 0 ? status.durationMillis! : elapsedMs;
 
     if (!uri) {
       throw new Error("Recording produced no audio file");

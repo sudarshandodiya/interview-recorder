@@ -15,7 +15,11 @@ import { StatusBadge } from "../src/components/StatusBadge";
 import { formatTime } from "../src/hooks/usePlayback";
 import * as api from "../src/services/api";
 import * as localStore from "../src/services/localStore";
-import { manualRetry, onStatusChange, syncAndClearLocal } from "../src/services/syncEngine";
+import {
+  manualRetry,
+  onStatusChange,
+  syncAndClearLocal,
+} from "../src/services/syncEngine";
 
 // ---------------------------------------------------------------------------
 // Recordings list (T-014) — manage past recordings: delete, retry (failed),
@@ -124,9 +128,7 @@ export default function RecordingsScreen() {
               </View>
               <Text style={styles.meta} numberOfLines={1}>
                 {item.role ? `${item.role} · ` : ""}
-                {item.durationMs > 0
-                  ? formatTime(item.durationMs)
-                  : "--"}
+                {item.durationMs > 0 ? formatTime(item.durationMs) : "--"}
                 {item.tags && item.tags.length > 0
                   ? ` · ${item.tags.join(", ")}`
                   : ""}

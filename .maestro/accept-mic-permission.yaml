@@ -1,0 +1,4 @@
+appId: com.interview.recorder
+name: Accept microphone permission
+---
+- tapOn: "Allow"

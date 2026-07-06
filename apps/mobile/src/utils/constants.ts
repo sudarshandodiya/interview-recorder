@@ -1,5 +1,5 @@
-import { Platform } from "react-native";
 import * as FileSystem from "expo-file-system";
+import { Platform } from "react-native";
 
 /**
  * Persistent directory for recording audio files and session manifests.
@@ -39,8 +39,7 @@ export const AUDIO_MIME_TYPE =
   Platform.OS === "ios" ? "audio/wav" : "audio/mp4";
 
 /** File extension for recordings (`.wav` on iOS, `.m4a` on Android). */
-export const AUDIO_EXTENSION =
-  Platform.OS === "ios" ? ".wav" : ".m4a";
+export const AUDIO_EXTENSION = Platform.OS === "ios" ? ".wav" : ".m4a";
 
 /** Ensure the recordings directory exists. Safe to call multiple times. */
 export async function ensureRecordingsDir(): Promise<void> {

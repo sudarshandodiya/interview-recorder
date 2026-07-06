@@ -1,0 +1,11 @@
+appId: com.interview.recorder
+name: Smoke test — app launch, login screen renders
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- waitForAnimationToEnd
+- assertVisible: "Interview Recorder"
+- assertVisible: "Sign in"
+- assertVisible: "Username"
+- assertVisible: "Password"

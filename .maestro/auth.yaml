@@ -1,0 +1,19 @@
+appId: com.interview.recorder
+name: Auth flow — login with dummy account
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- waitForAnimationToEnd
+- assertVisible: "Interview Recorder"
+- tapOn:
+    text: "Username"
+- inputText: "interviewer1"
+- tapOn:
+    text: "Password"
+- inputText: "pass1"
+- tapOn:
+    text: "Sign in"
+- waitForAnimationToEnd
+- assertVisible: "Start a new recording"
+- assertVisible: "Sign out"

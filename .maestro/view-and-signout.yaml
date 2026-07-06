@@ -1,0 +1,32 @@
+appId: com.interview.recorder
+name: View recordings and sign out
+---
+# ── Login ──
+- launchApp:
+    clearState: false
+    clearKeychain: false
+- waitForAnimationToEnd
+- tapOn:
+    text: "Username"
+- inputText: "interviewer1"
+- tapOn:
+    text: "Password"
+- inputText: "pass1"
+- tapOn:
+    text: "Sign in"
+- waitForAnimationToEnd
+- assertVisible: "Start a new recording"
+
+# ── Open My Recordings ──
+- tapOn: "My Recordings"
+- waitForAnimationToEnd
+
+# ── Sign out ──
+- back
+- waitForAnimationToEnd
+- assertVisible: "Interview Recorder"
+- tapOn:
+    text: "Sign out"
+- waitForAnimationToEnd
+- assertVisible: "Sign in"
+- assertVisible: "Username"

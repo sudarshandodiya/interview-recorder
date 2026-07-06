@@ -113,6 +113,30 @@ run = "echo 'Stack is up. Run `mise run dev:backend` and `mise run dev:mobile` i
 description = "Stop the entire dev stack"
 run = "docker compose down"
 
+# --- Maestro E2E tests ---
+# Requires the full stack + the app installed on a simulator.
+#   mise run stack:up && mise run dev:backend && mise run maestro:test
+[tasks."maestro:test"]
+description = "Run all Maestro E2E flows (.maestro/*.yaml)"
+run = "maestro test .maestro/"
+
+[tasks."maestro:smoke"]
+description = "Run the smoke Maestro flow (no backend needed)"
+run = "maestro test .maestro/smoke.yaml"
+
+[tasks."maestro:auth"]
+description = "Run the auth Maestro flow (needs backend + tinyauth)"
+run = "maestro test .maestro/auth.yaml"
+
+[tasks."maestro:create-recording"]
+description = "Run the create-recording Maestro flow (needs full stack)"
+run = "maestro test .maestro/create-recording.yaml"
+
+# Run the E2E test workflow on EAS (builds + tests in the cloud).
+[tasks."e2e:android"]
+description = "Run Maestro E2E tests on EAS (Android)"
+run = "npx eas-cli@latest workflow:run .eas/workflows/e2e-test-android.yml"
+
 # --- Deepsec (AI-powered vulnerability scanner) ---
 [tasks.deepsec]
 description = "Run deepsec commands (AI vulnerability scanner) with deepseek-v4-flash"

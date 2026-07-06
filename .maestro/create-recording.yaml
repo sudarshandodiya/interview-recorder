@@ -1,0 +1,64 @@
+appId: com.interview.recorder
+name: Full recording flow
+---
+# ── Login ──
+- launchApp:
+    clearState: false
+    clearKeychain: false
+- waitForAnimationToEnd
+- tapOn:
+    text: "Username"
+- inputText: "interviewer1"
+- tapOn:
+    text: "Password"
+- inputText: "pass1"
+- tapOn:
+    text: "Sign in"
+- waitForAnimationToEnd
+- assertVisible: "Start a new recording"
+
+# ── Handle microphone permission ──
+- runFlow:
+    when:
+      visible: "Allow"
+    file: .maestro/accept-mic-permission.yaml
+
+# ── Start a new recording ──
+- tapOn: "Start a new recording"
+- waitForAnimationToEnd
+- assertVisible: "Start recording"
+
+# ── Record for 5 seconds ──
+- tapOn:
+    text: "Record"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Stop"
+    timeout: 10000
+- swipe:
+    direction: UP
+    duration: 200
+- tapOn:
+    text: "Stop"
+- waitForAnimationToEnd
+
+# ── Fill in interviewee details ──
+- assertVisible: "Interviewee name"
+- tapOn:
+    text: "Interviewee name"
+- inputText: "Jane Doe"
+- hideKeyboard
+- tapOn:
+    text: "Interviewee role"
+- inputText: "Software Engineer"
+- hideKeyboard
+
+# ── Save ──
+- tapOn:
+    text: "Save"
+- waitForAnimationToEnd
+
+# ── Verify back on home ──
+- assertVisible: "Interview Recorder"
+- assertVisible:
+    text: "My Recordings (1)"
