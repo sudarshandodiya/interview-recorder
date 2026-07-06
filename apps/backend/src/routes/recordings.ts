@@ -24,6 +24,12 @@ const NOT_FOUND = {
   statusCode: 404,
 };
 
+/** Minimal RFC 4122 UUID check so a client-supplied id fails as 400, not 500. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isValidUuid(s: string): boolean {
+  return UUID_RE.test(s);
+}
+
 /** Select a recording owned by the user, or null (leaks no existence info). */
 async function getOwned(id: string, userId: string) {
   const rows = await db
@@ -99,7 +105,16 @@ export async function recordingRoutes(app: FastifyInstance): Promise<void> {
     // its locally-generated recording id so the same id is used in the audio
     // upload path (`POST /api/recordings/:id/audio`) without id remapping.
     // When omitted, the schema's `defaultRandom()` generates one.
+    // Validate it's a real UUID up front so a malformed id is a clean 400,
+    // not a 500 from Postgres' `uuid` column cast (`22P02`).
     const clientId = body?.id ? String(body.id) : undefined;
+    if (clientId && !isValidUuid(clientId)) {
+      return reply.status(400).send({
+        error: "Bad Request",
+        message: "id must be a valid UUID",
+        statusCode: 400,
+      });
+    }
     // Idempotent create: a client retry with the same id returns the
     // existing row instead of failing on PK conflict.
     const rec = clientId

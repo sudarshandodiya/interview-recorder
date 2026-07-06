@@ -70,6 +70,12 @@ cp .env.example .env
 
 Edit `.env` as needed (defaults work out of the box with Docker Compose).
 
+`mise.toml` loads `.env` via its `_.file` directive so every `mise run` task
+and `mise exec` invocation (including `drizzle-kit` for `db:migrate`) sees
+`DATABASE_URL`, `S3_*`, and `AWS_*` without each script re-importing dotenv.
+If `.env` is missing, tasks that need the DB/S3 will fail with a connection
+error — copy it from `.env.example` first.
+
 ### 4. Start infrastructure
 
 ```bash
@@ -145,6 +151,11 @@ than Prisma for this scope, and migrations are just SQL.
 LocalStack emulates S3 locally so the full upload pipeline works without
 an AWS account. The same `@aws-sdk/client-s3` code works against both
 LocalStack and real S3 (just swap the endpoint).
+
+`docker-compose.yml` pins LocalStack to `3.7.2`: the `latest` tag
+(v2026.x+) requires a `LOCALSTACK_AUTH_TOKEN` for license activation and
+exits with code 55 without one; 3.x community S3 works token-free for
+local dev.
 
 ### Sync with Retry
 

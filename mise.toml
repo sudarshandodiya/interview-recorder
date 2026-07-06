@@ -5,6 +5,12 @@ pnpm = "9"
 [env]
 # Ensure mise-managed node is used
 PATH = "{{ config_root }}/node_modules/.bin:{{ env.PATH }}"
+# Load project env vars (DATABASE_URL, S3/AWS, API_PORT, JWT_SECRET) into every
+# task and `mise exec`. Sourced from the root .env so db:migrate (drizzle-kit)
+# and dev:backend (Fastify getEnv) both see them without each task
+# re-importing dotenv. Skips missing file gracefully (e.g. on a fresh clone
+# before `cp .env.example .env`).
+_.file = "{{ config_root }}/.env"
 
 [tasks.install]
 description = "Install all dependencies"
