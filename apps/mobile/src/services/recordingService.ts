@@ -146,6 +146,11 @@ export class RecordingService {
     this.startTimestamp = Date.now();
     await this.recording.startAsync();
 
+    // Update audioPath with the actual URI expo-av assigned (not our guess),
+    // so crash recovery can find the file.
+    const actualUri = this.recording.getURI();
+    if (actualUri) this.audioPath = actualUri;
+
     this.state = "recording";
 
     // Write session manifest for crash recovery (T-012)
