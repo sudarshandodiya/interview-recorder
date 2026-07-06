@@ -12,6 +12,8 @@ synchronization.
 | Backend | Node.js + Fastify 5 + TypeScript |
 | Database | PostgreSQL 16 (Drizzle ORM) |
 | File storage | AWS S3 (LocalStack for local dev) |
+| Auth | Tinyauth (HTTP credential store) + session JWT (jose) |
+| Lint / Format | Biome |
 | Monorepo | Turborepo + pnpm workspaces |
 | Runtime | mise (Node 22, pnpm 9) |
 
@@ -23,7 +25,7 @@ interview-recorder/
 ├── package.json              # Root workspace
 ├── pnpm-workspace.yaml
 ├── turbo.json                # Turborepo pipeline
-├── docker-compose.yml        # PostgreSQL + LocalStack
+├── docker-compose.yml        # PostgreSQL + LocalStack + Tinyauth
 ├── apps/
 │   ├── mobile/               # Expo React Native app
 │   │   ├── app/              # File-based routing (expo-router)
@@ -122,7 +124,13 @@ Run `mise tasks` to list all available tasks.
 | `dev:mobile` | Expo dev server with QR code |
 | `build` | Build all packages |
 | `test` | Run all tests |
-| `lint` | Lint all packages |
+| `test:backend` | Run backend tests |
+| `lint` | Biome linter on all packages |
+| `format` | Format all files with Biome |
+| `format:check` | Check formatting without writing |
+| `typecheck` | Type-check all packages (tsc) |
+| `typecheck:backend` | Type-check the backend only |
+| `check` | Full CI: lint + format:check + typecheck + test |
 | `db:up` | Start Docker services |
 | `db:down` | Stop Docker services |
 | `db:migrate` | Push Drizzle schema to DB |
