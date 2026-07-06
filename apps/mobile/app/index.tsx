@@ -1,6 +1,6 @@
 import type { Href } from "expo-router";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../src/auth/AuthContext";
 import * as localStore from "../src/services/localStore";
@@ -15,9 +15,11 @@ export default function HomeScreen() {
   const { signOut, username } = useAuth();
   const [count, setCount] = useState(0);
 
-  useEffect(() => {
-    void localStore.countRecordings().then(setCount);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void localStore.countRecordings().then(setCount);
+    }, []),
+  );
 
   return (
     <View style={styles.container}>

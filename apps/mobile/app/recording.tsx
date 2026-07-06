@@ -76,7 +76,7 @@ export default function RecordingScreen() {
     };
     await upsertRecording(updated);
     await enqueueUpload(updated.id);
-    router.push("/recordings" as Href);
+    router.replace("/recordings" as Href);
   }, [intervieweeName, role, tagsText, notes, lastRecording, router]);
 
   const onCancelRecording = useCallback(async () => {
