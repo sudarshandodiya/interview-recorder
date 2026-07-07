@@ -176,11 +176,21 @@ export default function RecordingDetailScreen() {
         {pb.isLoading ? (
           <ActivityIndicator />
         ) : pb.error ? (
-          <Text style={styles.muted}>
-            {rec.notes?.includes("recovered")
-              ? "This recording was recovered after a crash. The audio may be incomplete."
-              : `Cannot play: ${pb.error}`}
-          </Text>
+          rec.notes?.includes("recovered") ? (
+            <>
+              <Text style={styles.muted}>
+                This recording was recovered after a crash. The audio file is
+                incomplete — AAC/MP4 headers are only written on a clean stop,
+                so the partial file cannot be played.
+              </Text>
+              <Text style={styles.mutedSmall}>
+                New recordings use WAV on iOS, which survives crashes.
+                Delete this one and re-record to get playable audio.
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.muted}>Cannot play: {pb.error}</Text>
+          )
         ) : (
           <>
             <Text style={styles.position}>
@@ -337,6 +347,7 @@ const styles = StyleSheet.create({
   container: { padding: 20, backgroundColor: "#f8f9fa", paddingBottom: 40 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   muted: { color: "#6c757d", fontSize: 14 },
+  mutedSmall: { color: "#6c757d", fontSize: 12, marginTop: 8 },
   header: {
     flexDirection: "row",
     alignItems: "center",
