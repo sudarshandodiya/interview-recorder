@@ -92,7 +92,7 @@ export async function recoverInterruptedSessions(): Promise<
         intervieweeName: "Unknown",
         role: undefined,
         tags: [],
-        notes: "This recording was recovered after an unexpected interruption.",
+        notes: "Recovered after an interruption.",
         durationMs: 0, // Unknown until playback reads metadata; sync fills it
         fileSizeBytes,
         mimeType: AUDIO_MIME_TYPE,
