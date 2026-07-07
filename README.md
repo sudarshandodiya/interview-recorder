@@ -14,6 +14,7 @@ synchronization.
 | File storage | AWS S3 (LocalStack for local dev) |
 | Auth | Tinyauth (HTTP credential store) + session JWT (jose) |
 | Lint / Format | Biome |
+| Security scanning | Deepsec (AI-powered vulnerability scanner) |
 | Monorepo | Turborepo + pnpm workspaces |
 | Runtime | mise (Node 22, pnpm 9) |
 
@@ -144,11 +145,33 @@ Run `mise tasks` to list all available tasks.
 | `maestro:smoke` | Run the smoke Maestro flow (no backend needed) |
 | `maestro:auth` | Run the auth Maestro flow (needs backend + Tinyauth) |
 | `maestro:create-recording` | Run the create-recording Maestro flow |
+| `deepsec:scan` | Scan for candidate vulnerability sites |
+| `deepsec:process` | Investigate candidates with AI agent |
+| `deepsec:report` | Generate a vulnerability report |
+| `deepsec:status` | Show the current scan state |
 | `clean` | Remove all build artifacts |
 
 ## API Documentation
 
 See [docs/api.md](docs/api.md) for complete API reference.
+
+## Security Scanning
+
+The repo includes [Deepsec](https://github.com/deepsec), an AI-powered
+vulnerability scanner that uses regex matchers to find candidate security
+issues (hardcoded secrets, missing rate limits, unauthenticated endpoints, IDOR
+patterns), then passes them to an AI agent for analysis. Findings are written to
+`.deepsec/data/interview-recorder/reports/`.
+
+```bash
+mise run deepsec:scan      # Run regex matchers across the codebase
+mise run deepsec:process   # Investigate candidates with the AI agent
+mise run deepsec:report    # Generate markdown + JSON vulnerability report
+mise run deepsec:status    # Show current scan state
+```
+
+Reports from deepsec informed the JWT secret hardening and rate-limit
+configuration in `apps/backend/src/config/env.ts` and `apps/backend/src/app.ts`.
 
 ## Architecture Decisions
 
