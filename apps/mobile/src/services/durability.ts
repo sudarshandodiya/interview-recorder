@@ -1,6 +1,7 @@
 import type { Recording } from "@interview-recorder/shared";
 import * as FileSystem from "expo-file-system";
 import {
+  AUDIO_EXTENSION,
   AUDIO_MIME_TYPE,
   ensureRecordingsDir,
   RECORDINGS_DIR,
@@ -82,6 +83,25 @@ export async function recoverInterruptedSessions(): Promise<
       // Get the file size as a best-effort duration proxy
       const fileSizeBytes = (audioInfo as { size?: number }).size ?? 0;
 
+      // Copy the partial audio to our persistent recordings directory.
+      // expo-av places recordings in a temp location; copying to
+      // DocumentDirectory ensures Audio.Sound can reliably load it.
+      const destPath = `${RECORDINGS_DIR}${manifest.id}${AUDIO_EXTENSION}`;
+      await FileSystem.copyAsync({
+        from: manifest.audioPath,
+        to: destPath,
+      });
+      const permanentUri = destPath;
+
+      // Delete the temp original (no longer needed)
+      try {
+        await FileSystem.deleteAsync(manifest.audioPath, {
+          idempotent: true,
+        });
+      } catch {
+        // best-effort
+      }
+
       // Create a Recording entry for the partial audio
       const now = new Date().toISOString();
       const recording: Recording = {
@@ -98,7 +118,7 @@ export async function recoverInterruptedSessions(): Promise<
         mimeType: AUDIO_MIME_TYPE,
         status: "local",
         s3Key: null,
-        localUri: manifest.audioPath,
+        localUri: permanentUri,
         createdAt: manifest.startedAt,
         updatedAt: now,
       };
@@ -110,7 +130,7 @@ export async function recoverInterruptedSessions(): Promise<
 
       recovered.push({
         recordingId: manifest.id,
-        audioPath: manifest.audioPath,
+        audioPath: permanentUri,
         durationMs: 0,
         recovered: true,
       });
